@@ -3,6 +3,7 @@ import { useLayoutStore } from '../stores/useLayoutStore'
 import LayersPanel from './LayersPanel'
 import ChartPane from './ChartPane'
 import SymbolSearch from './SymbolSearch'
+import { alignSeriesData } from '../utils/dataAligner'
 import './ChartPanel.scss'
 
 const API_BASE = 'http://127.0.0.1:8000/api/v1'
@@ -163,70 +164,104 @@ function ChartPanel() {
     // I will assume resizing is "Planned Next" or implementation detail I can fix later.
     // Or I can add a `setPanes` action to store quickly.
 
+
+
+    // ... in ChartPanel ...
     // Re-rendering Panes
     // const panes = chart.panes || [] // Old
     // New: panes comes from useLayoutStore hook directly
 
+    // Find Main Data for Alignment
+    const mainPane = panes.find(p => p.id === 'main-pane') || panes[0]
+    const mainSeries = mainPane?.series.find(s => s.isMain) || mainPane?.series[0]
+    const mainData = mainSeries?.data || []
+
     return (
         <div className="chart-panel" ref={containerRef} style={{ display: 'flex', flexDirection: 'column' }}>
-            {panes.map((pane, idx) => (
-                <div key={pane.id} style={{ flex: `${pane.height} 1 0`, minHeight: 0, display: 'flex', flexDirection: 'column', position: 'relative' }}>
-                    <ChartPane
-                        ref={el => {
-                            if (el) paneRefs.current[pane.id] = el
-                            else delete paneRefs.current[pane.id]
-                        }}
-                        id={pane.id}
-                        paneId={pane.id} // Explicit paneId for DrawingsManager
-                        paneIndex={idx}
-                        totalPanes={panes.length}
-                        height="100%"
-                        // NEW: Pass explicit series array
-                        seriesConfigs={pane.series}
-                        data={[]} // Deprecated
+            {panes.map((pane, idx) => {
+                // Align data for all series in this pane
+                const alignedSeriesConfigs = pane.series.map(s => {
+                    // Don't align main series with itself (optimization)
+                    if (s.id === mainSeries?.id) return s
 
-                        mainInfo={{
-                            ticker: pane.series.find(s => s.isMain)?.ticker || pane.series[0]?.ticker,
-                            timeframe: '1d' // Fixed for now, add store prop later
-                        }}
+                    // Align locally
+                    return {
+                        ...s,
+                        data: alignSeriesData(mainData, s.data)
+                    }
+                })
 
-                        isFirstPane={idx === 0}
-                        isLastPane={false}
+                return (
+                    <div key={pane.id} style={{ flex: `${pane.height} 1 0`, minHeight: 0, display: 'flex', flexDirection: 'column', position: 'relative' }}>
+                        <ChartPane
+                            ref={el => {
+                                if (el) paneRefs.current[pane.id] = el
+                                else delete paneRefs.current[pane.id]
+                            }}
+                            id={pane.id}
+                            paneId={pane.id} // Explicit paneId for DrawingsManager
+                            paneIndex={idx}
+                            totalPanes={panes.length}
+                            height="100%"
 
-                        onMoveSeries={handleMoveSeries}
-                        onRemoveSeries={handleRemoveSeries}
-                        onScaleChange={handleScaleChange}
-                        onSymbolSearchClick={() => setIsSearchOpen(true)}
-                        onChartReady={handleChartReady}
+                            seriesConfigs={alignedSeriesConfigs} // Pass aligned data embedded in config
+                            data={[]} // Deprecated
 
-                        // Pane Reordering (Floor Move)
-                        onMovePane={(dir) => movePane(pane.id, dir)} // removed chartId
-                        canMoveUp={idx > 0}
-                        canMoveDown={idx < panes.length - 1}
-                    />
+                            mainInfo={{
+                                ticker: pane.series.find(s => s.isMain)?.ticker || pane.series[0]?.ticker,
+                                timeframe: '1d' // Fixed for now, add store prop later
+                            }}
 
-                    {idx < panes.length - 1 && (
-                        <div className="chart-separator" />
-                    )}
-                </div>
-            ))}
+                            isFirstPane={idx === 0}
+                            isLastPane={idx === panes.length - 1} // Correct isLastPane check
 
-            {/* Timeline Pane */}
+                            // TimeScale Visibility: Only last pane shows dates
+                            timeScaleVisible={idx === panes.length - 1}
+
+                            onMoveSeries={handleMoveSeries}
+                            onRemoveSeries={handleRemoveSeries}
+                            onScaleChange={handleScaleChange}
+                            onSymbolSearchClick={() => setIsSearchOpen(true)}
+                            onChartReady={handleChartReady}
+
+                            // Pane Reordering (Floor Move)
+                            onMovePane={(dir) => movePane(pane.id, dir)} // removed chartId
+                            canMoveUp={idx > 0}
+                            canMoveDown={idx < panes.length - 1}
+                        />
+
+                        {idx < panes.length - 1 && (
+                            <div className="chart-separator" />
+                        )}
+                    </div>
+                )
+            })}
+
+            {/* Timeline Pane (Do we still need this separate pane if we enabled timeScale on the last pane?) */}
+            {/* The prompt says "Only the bottom-most panel should show dates". 
+                The User's prompt implies we fix the standard panels.
+                If I enable timeScale on the last actual ChartPane, I might not need this explicit 'pane_timeline' hack 
+                OR I should keep it if it serves a specific purpose (like a dedicated scrollbar area).
+                
+                Actually, typical TradingView layout has dates on the bottom chart.
+                If I use 'pane_timeline' (which is just a ChartPane with isTimeline=true), 
+                maybe I should remove it and trust the last pane?
+                
+                Let's stick to the prompt: Pass `timeScaleVisible={index === panes.length - 1}`.
+                So the last CONTENT pane will show dates. 
+                I should probably hide/remove the old "pane_timeline" div if it becomes redundant, 
+                or keep it if it's the *only* place? 
+                
+                The user's code previously had a dedicated 26px div for timeline. 
+                If I enable timeScale on the bottom content pane, it will take space INSIDE that pane.
+                So I should probably remove this extra div to avoid double dates.
+            */}
+
+            {/* 
             <div style={{ height: '26px', flexShrink: 0, borderTop: '1px solid #2a2e39' }}>
-                <ChartPane
-                    ref={el => { if (el) paneRefs.current['timeline'] = el }}
-                    id="pane_timeline"
-                    isTimeline={true}
-                    height="100%"
-                    seriesConfigs={[]}
-                    data={[]}
-                    mainInfo={{}} // Dummy
-                    paneIndex={-1}
-                    totalPanes={panes.length}
-                    isFirstPane={false}
-                    isLastPane={true}
-                />
-            </div>
+                <ChartPane ... />
+            </div> 
+            */}
 
             <img src="/logo.png" className="chart-logo" alt="Logo" />
 

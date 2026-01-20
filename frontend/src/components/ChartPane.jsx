@@ -33,7 +33,8 @@ const ChartPane = forwardRef(({
     onChartReady,
     onMovePane,
     canMoveUp,
-    canMoveDown
+    canMoveDown,
+    timeScaleVisible = true // Default to true
 }, ref) => {
     const containerRef = useRef(null)
     const chartRef = useRef(null)
@@ -82,10 +83,11 @@ const ChartPane = forwardRef(({
                 horzLines: { color: 'rgba(42, 46, 57, 0.5)', visible: !isTimeline },
             },
             rightPriceScale: {
-                visible: !isTimeline,
+                visible: true,
                 borderVisible: false,
                 scaleMargins: { top: 0.05, bottom: 0.12 },
                 autoScale: true,
+                mode: 1, // Normal
             },
             leftPriceScale: {
                 visible: !isTimeline,
@@ -94,7 +96,7 @@ const ChartPane = forwardRef(({
                 autoScale: true,
             },
             timeScale: {
-                visible: Boolean(isTimeline),
+                visible: timeScaleVisible,
                 timeVisible: true,
                 secondsVisible: false,
                 borderVisible: false,
@@ -185,7 +187,16 @@ const ChartPane = forwardRef(({
             chartRef.current = null
             seriesMap.current = {}
         }
-    }, [isTimeline, isFirstPane])
+    }, [isTimeline, isFirstPane, timeScaleVisible])
+
+    // Update TimeScale visibility if prop changes
+    useEffect(() => {
+        if (chartRef.current) {
+            chartRef.current.applyOptions({
+                timeScale: { visible: timeScaleVisible }
+            })
+        }
+    }, [timeScaleVisible])
 
     // Update Series
     useEffect(() => {
