@@ -1,5 +1,6 @@
 import pandas as pd
 import inspect
+import os
 
 class Indicators:
     """
@@ -161,11 +162,57 @@ class Indicators:
             m2_factor: Scalar multiplier for Global M2 (calibration).
         """
         if 'global_m2' not in df.columns:
-            print("Error: 'global_m2' column not found. Please ensure data is loaded with Macro data.")
-            return df
+            # Fallback: Load directly from file if not hydrated by server
+            try:
+                current_dir = os.path.dirname(os.path.abspath(__file__))
+                m2_path = os.path.join(current_dir, 'data', 'global_m2_agg.csv')
+                
+                if os.path.exists(m2_path):
+                    m2_df = pd.read_csv(m2_path)
+                    
+                    # Prepare M2 Index
+                    if 'date' in m2_df.columns:
+                        m2_df['date'] = pd.to_datetime(m2_df['date'])
+                        m2_df.set_index('date', inplace=True)
+                    
+                    # Prepare Main DF Index (if needed)
+                    # We need to temporarily set index to align, but keep original structure
+                    df_temp = df.copy()
+                    if 'time' in df_temp.columns and not isinstance(df_temp.index, pd.DatetimeIndex):
+                         df_temp['date'] = pd.to_datetime(df_temp['time'], unit='s')
+                         df_temp.set_index('date', inplace=True)
+                    
+                    # Merge (reindex ffill)
+                    m2_reindexed = m2_df.reindex(df_temp.index, method='ffill')
+                    
+                    # Assign back to original DF (using array assignment to match length)
+                    # Use the first column of the loaded data
+                    if not m2_reindexed.empty:
+                        df['global_m2'] = m2_reindexed.iloc[:, 0].values
+                        df['global_m2'] = df['global_m2'].fillna(0)
+                        # print("Successfully loaded global_m2 from file in indicators.py")
+                else:
+                    print(f"Error: 'global_m2' not found and file missing at {m2_path}")
+                    return df
+            except Exception as e:
+                print(f"Error loading fallback GM2: {e}")
+                return df
+
+        if 'global_m2' not in df.columns:
+             return df
         
         # 1. Estimate Supply
-        df['btc_supply'] = self._estimate_btc_supply(df.index.to_series())
+        # Ensure we have datetime objects for the supply curve function
+        if 'time' in df.columns:
+            # Check if time is seconds (likely) or ms
+            # Heuristic: if value > 30000000000 (year 2900), it's ms. But typically it's seconds here.
+            dates_series = pd.to_datetime(df['time'], unit='s')
+        elif 'date' in df.columns:
+            dates_series = pd.to_datetime(df['date'])
+        else:
+            dates_series = df.index.to_series()
+
+        df['btc_supply'] = self._estimate_btc_supply(dates_series)
         
         # 2. Calculate Market Cap (Estimated)
         df['btc_market_cap'] = df['close'] * df['btc_supply']
