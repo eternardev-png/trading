@@ -133,40 +133,28 @@ export const useLayoutStore = create((set, get) => ({
                 if (seriesIndex === -1) return pane
 
                 const series = pane.series[seriesIndex]
-                let newScaleId = series.priceScaleId || 'right'
+                const currentScaleId = series.priceScaleId || 'right'
 
-                if (mode === 'new-right' || mode === 'new-left') {
-                    // Generate new ID (Scale A, B, C...)
-                    // Find existing custom scales
-                    const usedParticularScales = pane.series
-                        .map(s => s.priceScaleId)
-                        .filter(id => id && id.startsWith('scale_'))
+                // Guard Clause: If target is already set, do nothing
+                if (mode === 'assign' && targetScaleId === currentScaleId) return pane
+                if (mode === 'right' && currentScaleId === 'right') return pane
+                if (mode === 'left' && currentScaleId === 'left') return pane
 
-                    // Simple generator: scale_A, scale_B ...
-                    const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
-                    let nextChar = 'A'
-                    for (let char of alphabet) {
-                        if (!usedParticularScales.includes(`scale_${char}`)) {
-                            nextChar = char
-                            break
-                        }
-                    }
-                    newScaleId = `scale_${nextChar}`
+                let newScaleId = currentScaleId
+
+                if (mode === 'new-right') {
+                    newScaleId = `scale_right_${uuidv4().slice(0, 8)}`
+                } else if (mode === 'new-left') {
+                    newScaleId = `scale_left_${uuidv4().slice(0, 8)}`
+                } else if (mode === 'merge-right' || mode === 'right') {
+                    newScaleId = 'right'
+                } else if (mode === 'merge-left' || mode === 'left') {
+                    newScaleId = 'left'
                 } else if (mode === 'assign') {
                     newScaleId = targetScaleId
-                } else if (mode === 'left') {
-                    newScaleId = 'left'
-                } else if (mode === 'right') {
-                    newScaleId = 'right'
-                } else if (mode === 'overlay') {
-                    // Overlay usually means 'no scale' or sharing main scale without affecting it?
-                    // In lightweight-charts, overlay often means overlaying on an existing scale (right) 
-                    // but not affecting autoScale, OR using a "Screen Scale".
-                    // Let's assume 'right' but with specific overlay logic elsewhere, 
-                    // OR just 'overlay' ID if chart supports it. 
-                    // Actually, for now let's just use 'right' as default or targetScaleId.
-                    newScaleId = targetScaleId || 'right'
                 }
+
+                if (newScaleId === currentScaleId) return pane
 
                 const newSeries = { ...series, priceScaleId: newScaleId }
                 const newSeriesList = [...pane.series]
@@ -181,12 +169,23 @@ export const useLayoutStore = create((set, get) => ({
 
     // Wrapper for Add Indicator
     addIndicator: (indicator) => {
+        // Map common names to codes if UI sends full names
+        // Ideally UI sends code. Assuming indicator.name IS the code like 'RSI'
+        // If it sends 'Индекс...', we need mapping. 
+        // For now, let's assume standard codes or rely on basic name.
+
+        let code = indicator.name
+        if (indicator.name.includes('RSI') || indicator.name.includes('Relative Strength')) code = 'RSI'
+        if (indicator.name.includes('SMA') || indicator.name.includes('Simple Moving')) code = 'SMA'
+        if (indicator.name.includes('EMA') || indicator.name.includes('Exponential')) code = 'EMA'
+
         const seriesObj = {
             id: uuidv4(),
-            ticker: indicator.name, // Placeholder
+            ticker: code, // Used for calculation type
             chartType: 'line',
-            title: indicator.name,
+            title: code,
             indicatorType: indicator.type,
+            isComputed: true, // Flag for Client-Side Calc
             color: '#' + Math.floor(Math.random() * 16777215).toString(16),
             visible: true
         }
@@ -249,6 +248,11 @@ export const useLayoutStore = create((set, get) => ({
             // Панель существует -> Слияние (Merge)
             newPanes[targetPaneIndex].series.push(series)
         } else {
+            // Reset scale ID to 'right' when moving to a new context (Floor)
+            // This ensures the series becomes the "Main" series of the new pane,
+            // using the standard visible Right Axis.
+            series.priceScaleId = 'right'
+
             // Панели нет -> Создание нового этажа (Create Floor)
             const newPane = {
                 id: uuidv4(),

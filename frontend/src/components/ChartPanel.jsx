@@ -4,6 +4,7 @@ import LayersPanel from './LayersPanel'
 import ChartPane from './ChartPane'
 import SymbolSearch from './SymbolSearch'
 import { alignSeriesData } from '../utils/dataAligner'
+import { calculateIndicator } from '../utils/indicators'
 import './ChartPanel.scss'
 
 const API_BASE = 'http://127.0.0.1:8000/api/v1'
@@ -73,20 +74,30 @@ function ChartPanel() {
 
 
     // Fetch Data Logic
-    // We walk through all series in all panes.
     useEffect(() => {
         const fetchSeriesData = async (series) => {
-            if (!series.ticker) return
-            // Don't fetch data for client-side indicators
-            if (series.indicatorType) return
-
             if (series.data && series.data.length > 0) return // Already loaded
+
+            // 1. Client-Side Computed Indicators (RSI, SMA...)
+            if (series.isComputed) {
+                // Find main data (source)
+                // Use first series of 'main-pane'
+                const mainPane = panes.find(p => p.id === 'main-pane') || panes[0]
+                const sourceSeries = mainPane?.series.find(s => s.isMain) || mainPane?.series[0]
+
+                if (sourceSeries && sourceSeries.data && sourceSeries.data.length > 0) {
+                    const computedData = calculateIndicator(series.ticker, sourceSeries.data) // ticker holds 'RSI', 'SMA' etc
+                    setSeriesData(series.id, computedData)
+                }
+                return
+            }
+
+            if (!series.ticker) return
+            // Don't fetch data for client-side indicators if flagged (double check)
+            if (series.indicatorType && series.isComputed) return
 
             try {
                 // Use global timeframe or series timeframe (if persistent)
-                // For now hardcode '1d' or get from store helper if we added one. 
-                // Store has setChartTimeframe but not get. 
-                // Let's assume '1d' default for now or add timeframe state to store root.
                 const timeframe = '1d'
                 const url = `${API_BASE}/data?ticker=${encodeURIComponent(series.ticker)}&timeframe=${timeframe}`
                 const res = await fetch(url)
@@ -106,7 +117,7 @@ function ChartPanel() {
             })
         })
 
-    }, [panes]) // Removed chart.timeframe dep for now
+    }, [panes])
 
 
     const handleChartReady = () => setReadyCharts(p => p + 1)

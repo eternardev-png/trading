@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useImperativeHandle, forwardRef, memo } from 'react'
+import { useEffect, useRef, useState, useImperativeHandle, forwardRef, memo, useMemo } from 'react'
 import { createChart, ColorType } from 'lightweight-charts'
 import { useLayoutStore } from '../stores/useLayoutStore'
 import SeriesMenu from './SeriesMenu'
@@ -198,35 +198,61 @@ const ChartPane = forwardRef(({
         }
     }, [timeScaleVisible])
 
-    // Update Custom Scales
+    // Track widths for hover detection
+    const scaleWidths = useRef({})
+
+    // Update Custom Scales & Measure Widths
     useEffect(() => {
         if (!chartRef.current) return
 
-        // Collect all used scale IDs
-        const usedScales = new Set(['right']) // Always ensure right is configured enabled by default logic
-        if (!isTimeline) usedScales.add('left')
+        const used = new Set()
+        // if (!isTimeline) used.add('left') // Removed unconditional left
 
         seriesConfigs.forEach(s => {
-            if (s.priceScaleId) usedScales.add(s.priceScaleId)
+            // Default to 'right' if not specified
+            const sid = s.priceScaleId || 'right'
+            used.add(sid)
         })
 
-        // Apply options for each used scale
-        usedScales.forEach(scaleId => {
-            if (scaleId === 'right' || scaleId === 'left') return
-            if (scaleId === 'new-right' || scaleId === 'new-left') return // Skip logic placeholders
+        // Explicitly hide default scales if they are NOT used
+        // LWC enables 'right' by default, so we must disable it if we are using a custom scale only.
+        if (!used.has('right')) {
+            try { chartRef.current.priceScale('right').applyOptions({ visible: false }) } catch (e) { }
+        }
+        if (!used.has('left')) {
+            try { chartRef.current.priceScale('left').applyOptions({ visible: false }) } catch (e) { }
+        }
 
+        used.forEach(scaleId => {
+            // Treat defaults and custom IDs similarly
+            const position = scaleId.includes('left') || scaleId === 'left' ? 'left' : 'right'
             try {
-                chartRef.current.priceScale(scaleId).applyOptions({
+                const scale = chartRef.current.priceScale(scaleId)
+                scale.applyOptions({
                     visible: true,
                     autoScale: true,
-                    // We could add margins, colors, etc.
+                    position: position,
+                    scaleMargins: { top: 0.1, bottom: 0.1 }, // Reset margins to safe defaults
+                    ticksVisible: true,
+                    borderVisible: false
                 })
-            } catch (e) {
-                console.warn(`Failed to apply options for scale ${scaleId}:`, e)
-            }
+            } catch (e) { }
         })
 
     }, [seriesConfigs, isTimeline])
+
+    // ...
+
+
+
+    // ... 
+
+    {/* Dynamic Scale Controls */ }
+    {/* We render a list of controls for active scales? */ }
+    {/* For now, just keep Left/Right generic controls that toggle the "Main" left/right scales.
+        Implementing full multi-scale controls overlay is complex without exact coords.
+        But we can at least make sure the 'left' button works for Volume.
+    */}
 
     // Update Series
     useEffect(() => {
@@ -250,13 +276,14 @@ const ChartPane = forwardRef(({
                         borderVisible: false,
                         wickUpColor: '#26a69a',
                         wickDownColor: '#ef5350',
+                        priceScaleId: config.priceScaleId || 'right', // Apply immediately
                     })
                 } else if (config.chartType === 'line' || config.chartType === 'area') {
                     // Support area if needed, default to line
                     series = chartRef.current.addLineSeries({
                         color: config.color || '#2962ff',
                         lineWidth: config.lineWidth || 2,
-                        priceScaleId: config.priceScaleId || 'right',
+                        priceScaleId: config.priceScaleId || 'right', // Apply immediately
                     })
                 } else if (config.chartType === 'volume' || config.type === 'volume') { // Handle legacy 'type'
                     const isOverlayVolume = isOverlay // Logic: if pane has candles, vol is overlay
@@ -365,17 +392,7 @@ const ChartPane = forwardRef(({
             const hasData = seriesConfigs.some(s => s.data && s.data.length > 0) || (data && data.length > 0)
 
             if (isFirstLoad.current && hasData) {
-                setTimeout(() => {
-                    if (chartRef.current) {
-                        chartRef.current.priceScale('right').applyOptions({ autoScale: false })
-                        chartRef.current.priceScale('left').applyOptions({ autoScale: false })
-
-                        setScaleModes(prev => ({
-                            left: { ...prev.left, autoScale: false },
-                            right: { ...prev.right, autoScale: false }
-                        }))
-                    }
-                }, 100)
+                // Ensure default autoScale remains ON. No manual override.
                 isFirstLoad.current = false
             }
         }
@@ -388,7 +405,14 @@ const ChartPane = forwardRef(({
         const scale = chartRef.current.priceScale(scaleId)
         const opts = scale.options()
         scale.applyOptions({ autoScale: !opts.autoScale })
-        setScaleModes(prev => ({ ...prev, [scaleId]: { ...prev[scaleId], autoScale: !opts.autoScale } }))
+
+        setScaleModes(prev => {
+            const current = prev[scaleId] || { autoScale: true, log: false }
+            return {
+                ...prev,
+                [scaleId]: { ...current, autoScale: !opts.autoScale }
+            }
+        })
     }
 
     const toggleLog = (scaleId) => {
@@ -397,8 +421,24 @@ const ChartPane = forwardRef(({
         const opts = scale.options()
         const newMode = opts.mode === 1 ? 0 : 1
         scale.applyOptions({ mode: newMode })
-        setScaleModes(prev => ({ ...prev, [scaleId]: { ...prev[scaleId], log: newMode === 1 } }))
+
+        setScaleModes(prev => {
+            const current = prev[scaleId] || { autoScale: true, log: false }
+            return {
+                ...prev,
+                [scaleId]: { ...current, log: newMode === 1 }
+            }
+        })
     }
+
+    // ... (handleMouseMove is unchanged, skipping in replacement if possible, but simpler to replace whole block if contiguous)
+    // Actually toggle functions are 405-438.
+    // list logic is 461-463.
+    // I will do 2 chunks or 1 big chunk? They are separated by handleMouseMove.
+    // I will do 2 chunks.
+
+    // CHUNK 1: Toggles
+
 
     const handleMouseMove = (e) => {
         if (!containerRef.current) return
@@ -407,7 +447,7 @@ const ChartPane = forwardRef(({
         const y = e.clientY - rect.top
         const width = rect.width
         const height = rect.height
-        const scaleWidth = 60
+        const scaleWidth = 80
         const bottomAreaHeight = 100
 
         if (y > height - bottomAreaHeight) {
@@ -434,6 +474,27 @@ const ChartPane = forwardRef(({
         id
     }))
 
+    // Prepare Scale Lists for Rendering
+    const leftScales = []
+    const rightScales = []
+    const usedIds = new Set()
+
+    // Always include defaults if enabled (or checked for usage)
+    // Left scale only if explicitly used
+    // usedIds.add('right') // REMOVED UNCONDITIONAL ADD
+
+    seriesConfigs.forEach(s => {
+        const sid = s.priceScaleId || 'right'
+        usedIds.add(sid)
+    })
+
+    usedIds.forEach(id => {
+        // Treat defaults and custom IDs similarly
+        const pos = id.includes('left') || id === 'left' ? 'left' : 'right'
+        if (pos === 'left') leftScales.push(id)
+        else rightScales.push(id)
+    })
+
     return (
         <div
             className="chart-pane"
@@ -446,17 +507,39 @@ const ChartPane = forwardRef(({
                 <>
                     <div
                         className="scale-controls scale-controls--left"
-                        style={{ opacity: hoveredScale === 'left' ? 1 : 0, pointerEvents: hoveredScale === 'left' ? 'auto' : 'none' }}
+                        style={{
+                            opacity: hoveredScale === 'left' ? 1 : 0,
+                            pointerEvents: hoveredScale === 'left' ? 'auto' : 'none',
+                            zIndex: 50,
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '4px'
+                        }}
                     >
-                        <button className={`scale-btn ${scaleModes.left.autoScale ? 'active' : ''}`} onClick={() => toggleAuto('left')}>A</button>
-                        <button className={`scale-btn ${scaleModes.left.log ? 'active' : ''}`} onClick={() => toggleLog('left')}>L</button>
+                        {leftScales.map(sid => (
+                            <div key={sid} className="scale-group" style={{ display: 'flex', gap: '2px' }}>
+                                <button className={`scale-btn ${scaleModes[sid]?.autoScale ? 'active' : ''}`} onClick={() => toggleAuto(sid)}>A</button>
+                                <button className={`scale-btn ${scaleModes[sid]?.log ? 'active' : ''}`} onClick={() => toggleLog(sid)}>L</button>
+                            </div>
+                        ))}
                     </div>
                     <div
                         className="scale-controls scale-controls--right"
-                        style={{ opacity: hoveredScale === 'right' ? 1 : 0, pointerEvents: hoveredScale === 'right' ? 'auto' : 'none' }}
+                        style={{
+                            opacity: hoveredScale === 'right' ? 1 : 0,
+                            pointerEvents: hoveredScale === 'right' ? 'auto' : 'none',
+                            zIndex: 50,
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '4px'
+                        }}
                     >
-                        <button className={`scale-btn ${scaleModes.right.autoScale ? 'active' : ''}`} onClick={() => toggleAuto('right')}>A</button>
-                        <button className={`scale-btn ${scaleModes.right.log ? 'active' : ''}`} onClick={() => toggleLog('right')}>L</button>
+                        {rightScales.map(sid => (
+                            <div key={sid} className="scale-group" style={{ display: 'flex', gap: '2px' }}>
+                                <button className={`scale-btn ${scaleModes[sid]?.autoScale ? 'active' : ''}`} onClick={() => toggleAuto(sid)}>A</button>
+                                <button className={`scale-btn ${scaleModes[sid]?.log ? 'active' : ''}`} onClick={() => toggleLog(sid)}>L</button>
+                            </div>
+                        ))}
                     </div>
                 </>
             )}
@@ -583,8 +666,8 @@ const ChartPane = forwardRef(({
             {!isTimeline && chartRef.current && (
                 <DrawingsManager
                     chart={chartRef.current}
-                    // Use Main series for price conversion if present, else first series
-                    series={seriesMap.current[seriesConfigs.find(s => s.isMain)?.id] || seriesMap.current[seriesConfigs[0]?.id]}
+                    seriesConfigs={seriesConfigs} // Pass config to Dynamic finder
+                    seriesMap={seriesMap} // Pass Ref for API access
                     width={containerRef.current?.clientWidth}
                     height={containerRef.current?.clientHeight}
                     paneId={id}

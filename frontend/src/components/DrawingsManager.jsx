@@ -1,24 +1,37 @@
 import React, { useRef, useState, useEffect } from 'react'
 import { useLayoutStore } from '../stores/useLayoutStore'
 
-function DrawingsManager({ chart, series, width, height, paneId }) {
+function DrawingsManager({ chart, seriesConfigs, seriesMap, width, height, paneId }) {
     const { activeTool, setActiveTool, drawings, addDrawing, updateDrawing } = useLayoutStore()
-    const paneDrawings = drawings[paneId] || [] // Access drawings for THIS pane
+    const paneDrawings = drawings[paneId] || []
     const [currentDrawing, setCurrentDrawing] = useState(null)
+
+    // Helper: Find target series API
+    const getTargetSeries = () => {
+        if (!seriesConfigs || seriesConfigs.length === 0 || !seriesMap || !seriesMap.current) return null
+
+        // Strategy: Use Main Series, or First Series
+        const mainConfig = seriesConfigs.find(s => s.isMain) || seriesConfigs[0]
+        return seriesMap.current[mainConfig.id]
+    }
 
     // Convert logic: Time/Price -> X/Y
     const getPoint = (time, price) => {
+        const series = getTargetSeries()
         if (!chart || !series) return null
+
         const x = chart.timeScale().timeToCoordinate(time)
-        const y = series.priceToCoordinate(price)
+        const y = series.priceToCoordinate(price) // Use Series API
         return { x, y }
     }
 
     // Reverse: X/Y -> Time/Price
     const getCoordinate = (x, y) => {
+        const series = getTargetSeries()
         if (!chart || !series) return null
+
         const time = chart.timeScale().coordinateToTime(x)
-        const price = series.coordinateToPrice(y)
+        const price = series.coordinateToPrice(y) // Use Series API
         return { time, price }
     }
 
@@ -93,7 +106,7 @@ function DrawingsManager({ chart, series, width, height, paneId }) {
                 position: 'absolute',
                 top: 0,
                 left: 0,
-                pointerEvents: activeTool !== 'cursor' ? 'auto' : 'none',
+                pointerEvents: (activeTool === 'cursor' || activeTool === 'crosshair') ? 'none' : 'auto',
                 zIndex: 20
             }}
             onMouseDown={handleMouseDown}
