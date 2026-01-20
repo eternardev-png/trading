@@ -151,17 +151,22 @@ def calculate_indicator(req: IndicatorRequest):
         
         df_result = indicator_engine.apply_indicator(df, req.indicator, **params)
         
-        # Return only the new columns + time? Or full DF? 
-        # Let's return full modified DF
+        # Handle Dictionary result (e.g. BTC_GM2 new implementation)
+        if isinstance(df_result, dict):
+            if 'error' in df_result:
+                 raise Exception(df_result['error'])
+            return {
+                "indicator": req.indicator,
+                "data": df_result.get("data", [])
+            }
         
+        # Handle DataFrame result (Legacy/Other indicators)
         result_json = df_result.to_dict(orient='records')
         return {"indicator": req.indicator, "data": result_json}
 
     except Exception as e:
         import traceback
-        with open("error.log", "a") as f:
-            f.write(f"\n[{pd.Timestamp.now()}] Indicator Error: {req.indicator}\n")
-            traceback.print_exc(file=f)
+        traceback.print_exc()
         print(f"Error calculating {req.indicator}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 

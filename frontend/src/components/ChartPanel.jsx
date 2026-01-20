@@ -96,6 +96,13 @@ function ChartPanel() {
                                 params: series.params || { sma_weeks: 52 }
                             })
                         })
+
+                        if (!response.ok) {
+                            const errorText = await response.text()
+                            console.error(`BTC_GM2 API Error (${response.status}):`, errorText)
+                            return
+                        }
+
                         const json = await response.json()
                         if (json.data && json.data.length > 0) {
                             setSeriesData(series.id, json.data)

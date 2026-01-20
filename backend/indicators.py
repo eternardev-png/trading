@@ -111,6 +111,17 @@ class Indicators:
         # Helper to calc delta days
         
         def get_supply_curve(d):
+            # Ensure d is a Timestamp (handle int/str/datetime inputs)
+            if not isinstance(d, pd.Timestamp):
+                try:
+                    # Try to convert - handles int (unix), str (date string), datetime
+                    if isinstance(d, (int, float)):
+                        d = pd.Timestamp(d, unit='s')
+                    else:
+                        d = pd.Timestamp(d)
+                except:
+                    return 0  # Fallback for invalid dates
+            
             # Timestamps
             t_genesis = pd.Timestamp("2009-01-03")
             t_h1 = pd.Timestamp("2012-11-28")
@@ -151,151 +162,77 @@ class Indicators:
         # Optimization: use numpy piecewise if needed, but map is readable.
         return dates.map(get_supply_curve)
 
-    def ind_BTC_GM2(self, df: pd.DataFrame, sma_weeks: int = 52, yoy_threshold: float = 2.5, sell_threshold: float = 0.7, min_dist_weeks: int = 10, m2_factor: float = 1.0) -> pd.DataFrame:
+    def ind_BTC_GM2(self, data: pd.DataFrame, **kwargs) -> dict:
         """
-        Calculates BTC Market Cap relative to Global M2.
-        Args:
-            sma_weeks: Length of SMA in weeks (default 52).
-            yoy_threshold: Minimum YoY M2 growth % for Buy signal (default 2.5).
-            sell_threshold: Distance threshold for Sell signal (default 0.7).
-            min_dist_weeks: Minimum weeks between signals of the same type (default 10).
-            m2_factor: Scalar multiplier for Global M2 (calibration).
+        Bitcoin vs Global M2 Money Supply.
+        Loads 'global_m2_agg.csv' from the backend/data folder.
         """
-        if 'global_m2' not in df.columns:
-            # Fallback: Load directly from file if not hydrated by server
+        try:
+            # 1. Определяем правильный путь к файлу данных
+            current_dir = os.path.dirname(os.path.abspath(__file__))
+            m2_file_path = os.path.join(current_dir, 'data', 'global_m2_agg.csv')
+
+            if not os.path.exists(m2_file_path):
+                print(f"ERROR: GM2 data file not found at {m2_file_path}")
+                return {"error": "M2 Data file not found on server"}
+
+            # 2. Загружаем данные M2
+            # CSV has dates in unnamed first column (index_col=0)
             try:
-                current_dir = os.path.dirname(os.path.abspath(__file__))
-                m2_path = os.path.join(current_dir, 'data', 'global_m2_agg.csv')
-                
-                if os.path.exists(m2_path):
-                    m2_df = pd.read_csv(m2_path)
-                    
-                    # Prepare M2 Index
-                    if 'date' in m2_df.columns:
-                        m2_df['date'] = pd.to_datetime(m2_df['date'])
-                        m2_df.set_index('date', inplace=True)
-                    
-                    # Prepare Main DF Index (if needed)
-                    # We need to temporarily set index to align, but keep original structure
-                    df_temp = df.copy()
-                    if 'time' in df_temp.columns and not isinstance(df_temp.index, pd.DatetimeIndex):
-                         df_temp['date'] = pd.to_datetime(df_temp['time'], unit='s')
-                         df_temp.set_index('date', inplace=True)
-                    
-                    # Merge (reindex ffill)
-                    m2_reindexed = m2_df.reindex(df_temp.index, method='ffill')
-                    
-                    # Assign back to original DF (using array assignment to match length)
-                    # Use the first column of the loaded data
-                    if not m2_reindexed.empty:
-                        df['global_m2'] = m2_reindexed.iloc[:, 0].values
-                        df['global_m2'] = df['global_m2'].fillna(0)
-                        # print("Successfully loaded global_m2 from file in indicators.py")
-                else:
-                    print(f"Error: 'global_m2' not found and file missing at {m2_path}")
-                    return df
+                m2_data = pd.read_csv(m2_file_path, index_col=0, parse_dates=True)
+                m2_data.index.name = 'date'
             except Exception as e:
-                print(f"Error loading fallback GM2: {e}")
-                return df
+                print(f"Error reading CSV: {e}")
+                return {"error": f"Error reading CSV: {str(e)}"}
 
-        if 'global_m2' not in df.columns:
-             return df
-        
-        # 1. Estimate Supply
-        # Ensure we have datetime objects for the supply curve function
-        if 'time' in df.columns:
-            # Check if time is seconds (likely) or ms
-            # Heuristic: if value > 30000000000 (year 2900), it's ms. But typically it's seconds here.
-            dates_series = pd.to_datetime(df['time'], unit='s')
-        elif 'date' in df.columns:
-            dates_series = pd.to_datetime(df['date'])
-        else:
-            dates_series = df.index.to_series()
+            # 3. Подготовка данных графика (data приходит от фронтенда)
+            # data is already a DataFrame passed from server.py (constructed from JSON input)
+            if 'time' in data.columns:
+                data['date'] = pd.to_datetime(data['time'], unit='s')
+            elif 'date' in data.columns:
+                 data['date'] = pd.to_datetime(data['date'])
+            elif isinstance(data.index, pd.DatetimeIndex):
+                 data['date'] = data.index
+            
+            # Убедимся, что индексы - это даты для корректного merge
+            # Drop duplicates to avoid reindexing errors
+            df_price = data.drop_duplicates(subset=['date']).set_index('date').sort_index()
+            
+            # 4. Объединение данных
+            m2_data = m2_data.sort_index()
+            # reindex/ffill растянет значения M2 на каждый день
+            m2_reindexed = m2_data.reindex(df_price.index, method='ffill')
 
-        df['btc_supply'] = self._estimate_btc_supply(dates_series)
-        
-        # 2. Calculate Market Cap (Estimated)
-        df['btc_market_cap'] = df['close'] * df['btc_supply']
-        
-        # 3. Calculate Ratio: (Market Cap / (Global M2 * Factor)) * 100
-        # Apply calibration factor to M2
-        adjusted_m2 = df['global_m2'] * m2_factor
-        
-        # Check units: Market Cap is USD, Global M2 is USD.
-        # Result is percentage.
-        df['BTC_GM2'] = (df['btc_market_cap'] / adjusted_m2) * 100 
-        
-        # Calculate SMA (Signal Line) based on weeks
-        sma_length_days = sma_weeks * 7
-        df['BTC_GM2_SMA'] = df['BTC_GM2'].rolling(window=sma_length_days).mean()
-        
-        # Calculate Bands
-        df['BTC_GM2_Lower'] = df['BTC_GM2_SMA'] - 0.3
-        df['BTC_GM2_Upper'] = df['BTC_GM2_SMA'] + 0.5
-        
-        # --- Signal Logic ---
-        df['BTC_GM2_Distance'] = df['BTC_GM2'] - df['BTC_GM2_SMA']
-        
-        # YoY M2 Change (Loopback 365 days / 52 weeks)
-        df['Global_M2_YoY'] = df['global_m2'].pct_change(periods=365) * 100
-        
-        # Raw Signals
-        raw_buy = (df['Global_M2_YoY'] > yoy_threshold) & (df['BTC_GM2_Distance'] < 0)
-        raw_sell = df['BTC_GM2_Distance'] > sell_threshold
-        
-        # Filter Signals (Min Distance)
-        # Convert min_dist_weeks to days (approx bars)
-        min_bars = min_dist_weeks * 7
-        
-        final_buys = []
-        final_sells = []
-        
-        last_buy_idx = -99999
-        last_sell_idx = -99999
-        
-        # Iterating is efficient enough for daily data (<10k rows)
-        for i in range(len(df)):
-            # Buy
-            if raw_buy.iloc[i]:
-                if (i - last_buy_idx) >= min_bars:
-                    final_buys.append(True)
-                    last_buy_idx = i
-                else:
-                    final_buys.append(False)
-            else:
-                final_buys.append(False)
-                
-            # Sell
-            if raw_sell.iloc[i]:
-                if (i - last_sell_idx) >= min_bars:
-                    final_sells.append(True)
-                    last_sell_idx = i
-                else:
-                    final_sells.append(False)
-            else:
-                final_sells.append(False)
-        
-        df['Signal_Buy'] = final_buys
-        df['Signal_Sell'] = final_sells
-        
-        # --- Visualization Data (Zones) ---
-        # Logic: 
-        # Distance < -0.3 => Undervalued (Green Background)
-        # Distance > 0.5  => Overvalued (Red Background)
-        
-        def get_zone_color(row):
-            dist = row['BTC_GM2_Distance']
-            if dist < -0.3:
-                return 'rgba(76, 175, 80, 0.2)' # Green semi-transparent
-            elif dist > 0.5:
-                return 'rgba(239, 83, 80, 0.2)' # Red semi-transparent
-            else:
-                return None
-        
-        # We assign a constant value for the histogram to fill the height (handled in app.py scaling)
-        # But we need to know WHEN to paint.
-        # User requested modest value (e.g. 10) to avoid scale distortion if leaked.
-        df['Zone_Value'] = df['BTC_GM2_Distance'].apply(lambda x: 10 if (x < -0.3 or x > 0.5) else 0)
-        df['Zone_Color'] = df.apply(get_zone_color, axis=1)
-        
-        return df
+            # 5. Расчет
+            # TODO: Implement full Ratio logic (Price * Supply / M2) if needed.
+            # For now, following user request to return mapped M2 data or simple mapping.
+            # Let's try to verify if we can calc Ratio.
+            
+            # If input data has 'close' (Price), we can show Price vs M2? 
+            # User code was: result_series = m2_data[m2_col]
+            
+            if m2_reindexed.empty:
+                 return {"data": []}
+
+            m2_col = m2_reindexed.columns[0]
+            result_series = m2_reindexed[m2_col]
+            
+            # Очистка от NaN
+            result_series = result_series.fillna(0)
+
+            # 6. Формирование ответа
+            results = []
+            for date, value in result_series.items():
+                if pd.notna(value) and value != 0:
+                    results.append({
+                        "time": int(date.timestamp()),
+                        "value": float(value)
+                    })
+
+            return {"data": results}
+
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            print(f"Error calculating BTC_GM2: {str(e)}")
+            return {"error": str(e)}
