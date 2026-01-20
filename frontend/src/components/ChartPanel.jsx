@@ -16,6 +16,7 @@ function ChartPanel() {
         // reorderLayer,    // <--- No longer needed (legacy)
         movePane,
         moveSeries,
+        changeSeriesScale,
         addSeries
     } = useLayoutStore()
 
@@ -108,8 +109,8 @@ function ChartPanel() {
     const handleChartReady = () => setReadyCharts(p => p + 1)
 
     // Scale Change: Update specific series priceScale
-    const handleScaleChange = (seriesId, side) => {
-        updateSeriesSettings(seriesId, { priceScale: side || 'right' })
+    const handleScaleChange = (seriesId, mode) => {
+        changeSeriesScale(seriesId, mode)
     }
 
     // Move Series Logic (The Floor System)

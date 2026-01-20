@@ -211,25 +211,36 @@ function SeriesMenu({ name, color, priceScale, onScaleChange, onMoveToPane, onHi
 
                     {showScaleSubmenu && (
                         <div className="series-menu__submenu">
+                            <div className="series-menu__group-title">Стандартные</div>
                             <button
                                 className={`series-menu__item ${priceScale === 'right' ? 'active' : ''}`}
                                 onClick={() => { onScaleChange?.('right'); closeMenu(); }}
                             >
                                 {priceScale === 'right' && <span className="check">✓</span>}
-                                <span>Закреплено на правой шкале</span>
+                                <span>Правая шкала</span>
                             </button>
                             <button
                                 className={`series-menu__item ${priceScale === 'left' ? 'active' : ''}`}
                                 onClick={() => { onScaleChange?.('left'); closeMenu(); }}
                             >
                                 {priceScale === 'left' && <span className="check">✓</span>}
-                                <span>Закрепить на левой шкале</span>
+                                <span>Левая шкала</span>
+                            </button>
+
+                            <div className="series-menu__divider" />
+                            <div className="series-menu__group-title">Новая шкала</div>
+
+                            <button
+                                className="series-menu__item"
+                                onClick={() => { onScaleChange?.('new-right'); closeMenu(); }}
+                            >
+                                <span>+ Новая шкала справа</span>
                             </button>
                             <button
-                                className={`series-menu__item ${!priceScale ? 'active' : ''}`}
-                                onClick={() => { onScaleChange?.(''); closeMenu(); }}
+                                className="series-menu__item"
+                                onClick={() => { onScaleChange?.('new-left'); closeMenu(); }}
                             >
-                                <span>Без шкалы (на весь экран)</span>
+                                <span>+ Новая шкала слева</span>
                             </button>
                         </div>
                     )}

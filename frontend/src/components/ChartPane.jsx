@@ -198,6 +198,34 @@ const ChartPane = forwardRef(({
         }
     }, [timeScaleVisible])
 
+    // Update Custom Scales
+    useEffect(() => {
+        if (!chartRef.current) return
+
+        // Collect all used scale IDs
+        const usedScales = new Set(['right']) // Always ensure right is configured enabled by default logic
+        if (!isTimeline) usedScales.add('left')
+
+        seriesConfigs.forEach(s => {
+            if (s.priceScaleId) usedScales.add(s.priceScaleId)
+        })
+
+        // Apply options for each used scale
+        usedScales.forEach(scaleId => {
+            if (scaleId === 'right' || scaleId === 'left') return // Handled by default layout? 
+            // Ideally we re-apply to ensure visibility if they were hidden or new.
+
+            // Logic for Custom Scales (Scale A, Scale B...)
+            // We want them visible.
+            chartRef.current.priceScale(scaleId).applyOptions({
+                visible: true,
+                autoScale: true,
+                // We could add margins, colors, etc.
+            })
+        })
+
+    }, [seriesConfigs, isTimeline])
+
     // Update Series
     useEffect(() => {
         if (!chartRef.current) return
@@ -523,7 +551,7 @@ const ChartPane = forwardRef(({
                                                 totalPanes={totalPanes}
                                                 paneSeriesCount={seriesConfigs.length}
                                                 onMoveToPane={(dir) => onMoveSeries?.(config.id, dir)}
-                                                onScaleChange={(side) => onScaleChange?.(config.id, side)}
+                                                onScaleChange={(mode) => onScaleChange?.(config.id, mode)}
                                                 onHide={() => hideSeries(config.id)}
                                                 onRemove={() => onRemoveSeries?.(config.id)}
                                             />
@@ -550,10 +578,11 @@ const ChartPane = forwardRef(({
                 </div>
             )}
             {/* Drawings Overlay */}
-            {!isTimeline && chartRef.current && seriesMap.current[seriesConfigs[0]?.id] && (
+            {!isTimeline && chartRef.current && (
                 <DrawingsManager
                     chart={chartRef.current}
-                    series={seriesMap.current[seriesConfigs[0]?.id]} // Use main series for price conversion
+                    // Use Main series for price conversion if present, else first series
+                    series={seriesMap.current[seriesConfigs.find(s => s.isMain)?.id] || seriesMap.current[seriesConfigs[0]?.id]}
                     width={containerRef.current?.clientWidth}
                     height={containerRef.current?.clientHeight}
                     paneId={id}

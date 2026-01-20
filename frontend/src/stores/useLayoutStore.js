@@ -112,6 +112,60 @@ export const useLayoutStore = create((set, get) => ({
         return { panes: newPanes }
     }),
 
+    // --- Scale Management ---
+    changeSeriesScale: (seriesId, mode, targetScaleId) => {
+        set((state) => {
+            const newPanes = state.panes.map(pane => {
+                const seriesIndex = pane.series.findIndex(s => s.id === seriesId)
+                if (seriesIndex === -1) return pane
+
+                const series = pane.series[seriesIndex]
+                let newScaleId = series.priceScaleId || 'right'
+
+                if (mode === 'new-right' || mode === 'new-left') {
+                    // Generate new ID (Scale A, B, C...)
+                    // Find existing custom scales
+                    const usedParticularScales = pane.series
+                        .map(s => s.priceScaleId)
+                        .filter(id => id && id.startsWith('scale_'))
+
+                    // Simple generator: scale_A, scale_B ...
+                    const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+                    let nextChar = 'A'
+                    for (let char of alphabet) {
+                        if (!usedParticularScales.includes(`scale_${char}`)) {
+                            nextChar = char
+                            break
+                        }
+                    }
+                    newScaleId = `scale_${nextChar}`
+                } else if (mode === 'assign') {
+                    newScaleId = targetScaleId
+                } else if (mode === 'left') {
+                    newScaleId = 'left'
+                } else if (mode === 'right') {
+                    newScaleId = 'right'
+                } else if (mode === 'overlay') {
+                    // Overlay usually means 'no scale' or sharing main scale without affecting it?
+                    // In lightweight-charts, overlay often means overlaying on an existing scale (right) 
+                    // but not affecting autoScale, OR using a "Screen Scale".
+                    // Let's assume 'right' but with specific overlay logic elsewhere, 
+                    // OR just 'overlay' ID if chart supports it. 
+                    // Actually, for now let's just use 'right' as default or targetScaleId.
+                    newScaleId = targetScaleId || 'right'
+                }
+
+                const newSeries = { ...series, priceScaleId: newScaleId }
+                const newSeriesList = [...pane.series]
+                newSeriesList[seriesIndex] = newSeries
+
+                return { ...pane, series: newSeriesList }
+            })
+
+            return { panes: newPanes }
+        })
+    },
+
     // Wrapper for Add Indicator
     addIndicator: (indicator) => {
         const seriesObj = {
@@ -129,14 +183,22 @@ export const useLayoutStore = create((set, get) => ({
     },
 
     addCompareLayer: (ticker) => {
-        get().addSeries({
-            ticker,
+        const panes = get().panes
+        const mainPane = panes.find(p => p.id === 'main-pane') || panes[0]
+        if (!mainPane) return
+
+        const newSeries = {
+            id: uuidv4(),
+            ticker: ticker,
             title: ticker,
             chartType: 'line',
             color: '#ff9800',
             indicatorType: 'overlay',
-            visible: true
-        }, 'main-pane')
+            visible: true,
+            priceScaleId: 'new-right' // Default to new scale? Or right?
+        }
+
+        get().addSeries(newSeries, mainPane.id)
     },
 
     removeSeries: (seriesId) => set((state) => {
