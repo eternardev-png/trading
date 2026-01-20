@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useMemo } from 'react'
 import { useLayoutStore } from '../stores/useLayoutStore'
 import LayersPanel from './LayersPanel'
 import ChartPane from './ChartPane'
@@ -87,7 +87,53 @@ function ChartPanel() {
 
                 if (sourceSeries && sourceSeries.data && sourceSeries.data.length > 0) {
                     const computedData = calculateIndicator(series.ticker, sourceSeries.data) // ticker holds 'RSI', 'SMA' etc
-                    setSeriesData(series.id, computedData)
+                    // Prevent Loop: Only update if data is different? 
+                    // Comparing arrays is expensive.
+                    // Just check if we already have data?
+                    // The outer check `if (series.data && series.data.length > 0) return` handles "Already Loaded".
+                    // So if we are here, `series.data` is empty.
+                    // If `computedData` is also empty, we will Loop forever (Empty -> Calc -> Empty -> Set -> Update -> Empty...).
+
+                    if (computedData && computedData.length > 0) {
+                        setSeriesData(series.id, computedData)
+                    } else {
+                        console.warn(`Computed indicator ${series.ticker} returned no data.`)
+                        // To prevent retry loop, set an empty marker or handled flag? 
+                        // For now, assume it's transient or user error. 
+                        // But to stop REACT LOOP, we must stop updating store if result is empty.
+                        // We do nothing if empty. But then it re-tries next render?
+                        // Yes. But 'setSeriesData' is NOT called, so Store NOT updated, so React Render Loop STOPS.
+                    }
+                }
+                return
+            }
+
+            // 2. Server-Side Computed Indicators (BTC_GM2)
+            if (series.id === 'BTC_GM2' || series.ticker === 'BTC_GM2') {
+                const mainPane = panes.find(p => p.id === 'main-pane') || panes[0]
+                const sourceSeries = mainPane?.series.find(s => s.isMain) || mainPane?.series[0]
+
+                if (sourceSeries && sourceSeries.data && sourceSeries.data.length > 0) {
+                    // Check if data loaded to avoid loop, but we must check if input data changed?
+                    if (series.data && series.data.length > 0) return
+
+                    try {
+                        const response = await fetch(`${API_BASE}/indicators`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                data: sourceSeries.data,
+                                indicator: 'BTC_GM2',
+                                params: series.params || { sma_weeks: 52 }
+                            })
+                        })
+                        const json = await response.json()
+                        if (json.data && json.data.length > 0) {
+                            setSeriesData(series.id, json.data)
+                        }
+                    } catch (e) {
+                        console.error("Error calculating BTC_GM2:", e)
+                    }
                 }
                 return
             }
@@ -187,24 +233,31 @@ function ChartPanel() {
     // New: panes comes from useLayoutStore hook directly
 
     // Find Main Data for Alignment
+    // Find Main Data for Alignment
     const mainPane = panes.find(p => p.id === 'main-pane') || panes[0]
     const mainSeries = mainPane?.series.find(s => s.isMain) || mainPane?.series[0]
     const mainData = mainSeries?.data || []
 
+    const alignedPanes = useMemo(() => {
+        return panes.map(pane => {
+            const alignedSeries = pane.series.map(s => {
+                if (s.id === mainSeries?.id) return s
+                // Use a stable identity if data hasn't changed?
+                // alignSeriesData is expensive.
+                return {
+                    ...s,
+                    data: alignSeriesData(mainData, s.data)
+                }
+            })
+            return { ...pane, alignedSeries }
+        })
+    }, [panes, mainData, mainSeries?.id])
+
     return (
         <div className="chart-panel" ref={containerRef} style={{ display: 'flex', flexDirection: 'column' }}>
-            {panes.map((pane, idx) => {
-                // Align data for all series in this pane
-                const alignedSeriesConfigs = pane.series.map(s => {
-                    // Don't align main series with itself (optimization)
-                    if (s.id === mainSeries?.id) return s
+            {alignedPanes.map((pane, idx) => {
+                // pane.alignedSeries is the config
 
-                    // Align locally
-                    return {
-                        ...s,
-                        data: alignSeriesData(mainData, s.data)
-                    }
-                })
 
                 return (
                     <div key={pane.id} style={{ flex: `${pane.height} 1 0`, minHeight: 0, display: 'flex', flexDirection: 'column', position: 'relative' }}>
@@ -219,7 +272,7 @@ function ChartPanel() {
                             totalPanes={panes.length}
                             height="100%"
 
-                            seriesConfigs={alignedSeriesConfigs} // Pass aligned data embedded in config
+                            seriesConfigs={pane.alignedSeries} // updated to use memoized prop
                             data={[]} // Deprecated
 
                             mainInfo={{

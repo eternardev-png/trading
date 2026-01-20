@@ -99,6 +99,51 @@ def calculate_indicator(req: IndicatorRequest):
         
         # Parse params
         params = req.params
+
+        # --- SPECIAL HANDLING: Hydrate Macro Data for GM2 ---
+        if req.indicator == 'BTC_GM2' and 'global_m2' not in df.columns:
+            try:
+                print("Hydrating dataframe with Global M2 data...")
+                # 1. Prepare Crypto DF (Indices must be Datetime)
+                df_temp = df.copy()
+                if 'time' in df_temp.columns:
+                    df_temp['date'] = pd.to_datetime(df_temp['time'], unit='s')
+                    df_temp.set_index('date', inplace=True)
+                
+                # 2. Fetch Macro
+                # 'Global M2' will trigger the logic in DataLoader
+                m2_df = loader.fetch_macro_data('Global M2')
+                
+                if not m2_df.empty:
+                    # 3. Merge
+                    # merge_with_macro expects both to have DatetimeIndex
+                    merged_df = loader.merge_with_macro(df_temp, m2_df)
+                    
+                    # 4. Restore original structure (columns 'global_m2' should now exist)
+                    # We dropped 'time' if we set it as index? No, set_index keeps it unless drop=True (default True).
+                    # Let's restore 'time' from index or just keep 'global_m2' column back to original df?
+                    # Easiest is to use the merged_df, reset index to get 'date', then convert back to 'time' or just ensure 'time' exists.
+                    
+                    # merged_df has DatetimeIndex.
+                    # It has 'global_m2'.
+                    # It might have missing rows if merge failed? No, left join.
+                    
+                    # Reset index to get date column back
+                    merged_df.reset_index(inplace=True)
+                    
+                    # Ensure 'time' column is present and correct
+                    if 'time' not in merged_df.columns:
+                        merged_df['time'] = merged_df['date'].astype('int64') // 10**9
+                        
+                    # Update our main df
+                    df = merged_df
+                    print("Hydration successful. Columns:", df.columns.tolist())
+                else:
+                    print("Warning: Global M2 fetch returned empty.")
+            except Exception as ex:
+                print(f"Error hydrating M2: {ex}")
+        # ----------------------------------------------------
+
         
         # Call engine
         # We need to know specific arguments for each indicator logic if they are positional, 
