@@ -212,16 +212,18 @@ const ChartPane = forwardRef(({
 
         // Apply options for each used scale
         usedScales.forEach(scaleId => {
-            if (scaleId === 'right' || scaleId === 'left') return // Handled by default layout? 
-            // Ideally we re-apply to ensure visibility if they were hidden or new.
+            if (scaleId === 'right' || scaleId === 'left') return
+            if (scaleId === 'new-right' || scaleId === 'new-left') return // Skip logic placeholders
 
-            // Logic for Custom Scales (Scale A, Scale B...)
-            // We want them visible.
-            chartRef.current.priceScale(scaleId).applyOptions({
-                visible: true,
-                autoScale: true,
-                // We could add margins, colors, etc.
-            })
+            try {
+                chartRef.current.priceScale(scaleId).applyOptions({
+                    visible: true,
+                    autoScale: true,
+                    // We could add margins, colors, etc.
+                })
+            } catch (e) {
+                console.warn(`Failed to apply options for scale ${scaleId}:`, e)
+            }
         })
 
     }, [seriesConfigs, isTimeline])

@@ -100,9 +100,22 @@ export const useLayoutStore = create((set, get) => ({
         if (targetPaneId) {
             // Добавляем в конкретную панель (Overlay)
             const pane = newPanes.find(p => p.id === targetPaneId)
-            if (pane) pane.series.push(newSeries)
+            if (pane) {
+                // Ensure unique scale ID if requested
+                if (newSeries.priceScaleId === 'new-right' || newSeries.priceScaleId === 'new-left') {
+                    newSeries.priceScaleId = `scale_${uuidv4().slice(0, 8)}`
+                }
+                pane.series.push(newSeries)
+            }
         } else {
             // Создаем новый "этаж" внизу (например, для RSI, Volume)
+            if (newSeries.priceScaleId === 'new-right' || newSeries.priceScaleId === 'new-left') {
+                // For new pane, usually 'right' is fine unless explicitly requested custom?
+                // But let's support unique if they wanted 'new-right'.
+                // Actually, standard pane usually uses 'right' as main scale.
+                newSeries.priceScaleId = 'right'
+            }
+
             newPanes.push({
                 id: uuidv4(),
                 height: 200, // Высота по умолчанию для индикаторов

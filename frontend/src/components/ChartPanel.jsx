@@ -77,6 +77,9 @@ function ChartPanel() {
     useEffect(() => {
         const fetchSeriesData = async (series) => {
             if (!series.ticker) return
+            // Don't fetch data for client-side indicators
+            if (series.indicatorType) return
+
             if (series.data && series.data.length > 0) return // Already loaded
 
             try {
