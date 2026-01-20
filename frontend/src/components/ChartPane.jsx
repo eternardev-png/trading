@@ -545,6 +545,7 @@ const ChartPane = forwardRef(({
                     series={seriesMap.current[seriesConfigs[0]?.id]} // Use main series for price conversion
                     width={containerRef.current?.clientWidth}
                     height={containerRef.current?.clientHeight}
+                    paneId={id}
                 />
             )}
         </div>

@@ -15,12 +15,10 @@ function LayoutManager() {
     }
 
     return (
-        <div className={`layout ${getLayoutClass()}`}>
-            {charts.map((chart, index) => (
-                <div key={chart.id} className="layout__cell">
-                    <ChartPanel chart={chart} index={index} />
-                </div>
-            ))}
+        <div className={`layout layout--1`}>
+            <div className="layout__cell">
+                <ChartPanel />
+            </div>
         </div>
     )
 }

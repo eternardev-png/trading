@@ -7,8 +7,9 @@ import './ChartPanel.scss'
 
 const API_BASE = 'http://127.0.0.1:8000/api/v1'
 
-function ChartPanel({ chart, index }) {
+function ChartPanel() {
     const {
+        panes, // Direct access to panes
         setSeriesData,
         updateSeriesSettings,
         // reorderLayer,    // <--- No longer needed (legacy)
@@ -66,7 +67,7 @@ function ChartPanel({ chart, index }) {
             }
         })
         return () => unsubs.forEach(u => u())
-    }, [chart.panes, readyCharts]) // Re-run when panes change
+    }, [panes, readyCharts]) // Re-run when panes change
 
 
     // Fetch Data Logic
@@ -77,82 +78,62 @@ function ChartPanel({ chart, index }) {
             if (series.data && series.data.length > 0) return // Already loaded
 
             try {
-                const url = `${API_BASE}/data?ticker=${encodeURIComponent(series.ticker)}&timeframe=${chart.timeframe}`
+                // Use global timeframe or series timeframe (if persistent)
+                // For now hardcode '1d' or get from store helper if we added one. 
+                // Store has setChartTimeframe but not get. 
+                // Let's assume '1d' default for now or add timeframe state to store root.
+                const timeframe = '1d'
+                const url = `${API_BASE}/data?ticker=${encodeURIComponent(series.ticker)}&timeframe=${timeframe}`
                 const res = await fetch(url)
                 const json = await res.json()
                 if (json.data && json.data.length > 0) {
                     const sortedData = [...json.data].sort((a, b) => a.time - b.time)
-                    setSeriesData(chart.id, series.id, sortedData)
+                    setSeriesData(series.id, sortedData)
                 }
             } catch (e) {
                 console.error(`Fetch error for ${series.ticker}:`, e)
             }
         }
 
-        chart.panes.forEach(pane => {
+        panes.forEach(pane => {
             pane.series.forEach(series => {
                 fetchSeriesData(series)
             })
         })
 
-    }, [chart.panes, chart.timeframe])
+    }, [panes]) // Removed chart.timeframe dep for now
 
 
     const handleChartReady = () => setReadyCharts(p => p + 1)
 
     // Scale Change: Update specific series priceScale
     const handleScaleChange = (seriesId, side) => {
-        updateSeriesSettings(chart.id, seriesId, { priceScale: side || 'right' })
+        updateSeriesSettings(seriesId, { priceScale: side || 'right' })
     }
 
     // Move Series Logic (The Floor System)
     const handleMoveSeries = (seriesId, direction) => {
-        // direction: 'to_pane_above' (-1), 'to_pane_below' (1), 'new_pane_above', 'new_pane_below' ...
-        // Simplification: map string directions to -1 / 1
+        // Map UI direction to Store direction ('up' | 'down')
+        // 'to_pane_above', 'new_pane_above' -> 'up'
+        // 'to_pane_below', 'new_pane_below' -> 'down'
 
-        // Actually, user wants "Move to New Pane Below" vs "Move to Pane Below (Merge)".
-        // My store logic `moveSeries(chartId, seriesId, 1)` handles:
-        // - If pane exists -> Merge
-        // - If not -> Create New
-
-        // So for "Move Down" button: call moveSeries(1)
-        // For "Move Up" button: call moveSeries(-1)
-
-        // But what if user explicitly wants "New Pane Below" even if one exists?
-        // That's `moveSeriesToNewPane`.
-
-        if (direction === 'to_pane_above') moveSeries(chart.id, seriesId, -1)
-        else if (direction === 'to_pane_below') moveSeries(chart.id, seriesId, 1)
-        else if (direction === 'new_pane_below') {
-            // Explicit split
-            useLayoutStore.getState().moveSeriesToNewPane(chart.id, seriesId)
-        }
-        else if (direction === 'new_pane_above') {
-            // Not implemented in store yet, can simulate?
-            // Or just use generic move logic for now.
-        }
+        const dir = (direction.includes('above') || direction === 'up') ? 'up' : 'down'
+        moveSeries(seriesId, dir)
     }
 
     const handleRemoveSeries = (seriesId) => {
-        useLayoutStore.getState().removeSeries(chart.id, seriesId)
+        useLayoutStore.getState().removeSeries(seriesId)
     }
 
     const handleSymbolSelect = (symbol) => {
-        // Update Main Series ticker
-        // Identify main series?
-        const mainPane = chart.panes[0] // or find by id 'pane_main'
-        const mainSeries = mainPane?.series.find(s => s.isMain) || mainPane?.series[0]
-
-        if (mainSeries) {
-            // Update Main + Volume
-            // Assuming simple Structure: Pane 0 has Main and Volume
-            chart.panes.forEach(pane => {
-                pane.series.forEach(s => {
-                    if (s.isMain || s.chartType === 'volume' || s.priceScale === 'volume_scale') {
-                        updateSeriesSettings(chart.id, s.id, { ticker: symbol, title: symbol })
-                        setSeriesData(chart.id, s.id, []) // Clear data to trigger fetch
-                    }
-                })
+        // Update Main Series
+        const mainPane = panes[0] // Assume first pane matches
+        if (mainPane) {
+            mainPane.series.forEach(s => {
+                if (s.isMain || s.chartType === 'volume' || s.priceScale === 'volume_scale') {
+                    updateSeriesSettings(s.id, { ticker: symbol, title: symbol })
+                    setSeriesData(s.id, [])
+                }
             })
         }
         setIsSearchOpen(false)
@@ -183,7 +164,8 @@ function ChartPanel({ chart, index }) {
     // Or I can add a `setPanes` action to store quickly.
 
     // Re-rendering Panes
-    const panes = chart.panes || []
+    // const panes = chart.panes || [] // Old
+    // New: panes comes from useLayoutStore hook directly
 
     return (
         <div className="chart-panel" ref={containerRef} style={{ display: 'flex', flexDirection: 'column' }}>
@@ -195,21 +177,17 @@ function ChartPanel({ chart, index }) {
                             else delete paneRefs.current[pane.id]
                         }}
                         id={pane.id}
+                        paneId={pane.id} // Explicit paneId for DrawingsManager
                         paneIndex={idx}
                         totalPanes={panes.length}
                         height="100%"
                         // NEW: Pass explicit series array
                         seriesConfigs={pane.series}
-                        // Data is now embedded in seriesConfigs (series object has .data)
-                        // But Component expects `data`. 
-                        // Wait, previous ChartPane expected `data` prop (shared) OR individual `config.data`.
-                        // My new `series` objects HAVE `.data`.
-                        // So I can pass `data={[]}` (empty) and let ChartPane use `config.data`.
-                        data={[]}
+                        data={[]} // Deprecated
 
                         mainInfo={{
                             ticker: pane.series.find(s => s.isMain)?.ticker || pane.series[0]?.ticker,
-                            timeframe: chart.timeframe
+                            timeframe: '1d' // Fixed for now, add store prop later
                         }}
 
                         isFirstPane={idx === 0}
@@ -222,14 +200,13 @@ function ChartPanel({ chart, index }) {
                         onChartReady={handleChartReady}
 
                         // Pane Reordering (Floor Move)
-                        onMovePane={(dir) => movePane(chart.id, pane.id, dir)}
+                        onMovePane={(dir) => movePane(pane.id, dir)} // removed chartId
                         canMoveUp={idx > 0}
                         canMoveDown={idx < panes.length - 1}
                     />
 
                     {idx < panes.length - 1 && (
                         <div className="chart-separator" />
-                        // Resizing handler omitted for brevity, logic needs store action
                     )}
                 </div>
             ))}
@@ -253,8 +230,7 @@ function ChartPanel({ chart, index }) {
 
             <img src="/logo.png" className="chart-logo" alt="Logo" />
 
-            <button className="chart-panel__layers-btn" onClick={() => setShowLayers(!showLayers)}>☰</button>
-            {showLayers && <LayersPanel chart={chart} onClose={() => setShowLayers(false)} />}
+            {/* showLayers && <LayersPanel ... /> */}
             <SymbolSearch isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} onSelect={handleSymbolSelect} />
         </div>
     )

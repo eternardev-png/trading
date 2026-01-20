@@ -1,9 +1,9 @@
 import React, { useRef, useState, useEffect } from 'react'
 import { useLayoutStore } from '../stores/useLayoutStore'
 
-function DrawingsManager({ chart, series, width, height }) {
-    const { activeTool, setActiveTool } = useLayoutStore()
-    const [drawings, setDrawings] = useState([]) // { type: 'line', p1: { time, price }, p2: { ... }, id }
+function DrawingsManager({ chart, series, width, height, paneId }) {
+    const { activeTool, setActiveTool, drawings, addDrawing, updateDrawing } = useLayoutStore()
+    const paneDrawings = drawings[paneId] || [] // Access drawings for THIS pane
     const [currentDrawing, setCurrentDrawing] = useState(null)
 
     // Convert logic: Time/Price -> X/Y
@@ -48,9 +48,10 @@ function DrawingsManager({ chart, series, width, height }) {
             // Add other tools here (fib, etc)
         } else {
             // Finish drawing
-            setDrawings(prev => [...prev, { ...currentDrawing, p2: coord, id: Date.now() }])
+            const newDrawing = { ...currentDrawing, p2: coord }
+            addDrawing(paneId, newDrawing) // Save to STORE with paneId
             setCurrentDrawing(null)
-            setActiveTool('cursor') // Reset tool after draw? Or keep it? TV keeps it usually. Let's keep it.
+            // setActiveTool('cursor') // Optional: Keep tool active for multiple lines
         }
     }
 
@@ -99,7 +100,7 @@ function DrawingsManager({ chart, series, width, height }) {
             onMouseMove={handleMouseMove}
         >
             {/* Render Finished Drawings */}
-            {drawings.map(d => {
+            {paneDrawings.map(d => {
                 const p1 = getPoint(d.p1.time, d.p1.price)
                 const p2 = getPoint(d.p2.time, d.p2.price)
                 if (!p1 || !p2) return null

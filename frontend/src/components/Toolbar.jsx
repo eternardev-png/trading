@@ -18,7 +18,8 @@ function Toolbar() {
         layoutMode, setLayoutMode,
         syncCrosshair, setSyncCrosshair,
         syncTimeRange, setSyncTimeRange,
-        charts, setChartTimeframe,
+        panes, // New
+        setChartTimeframe, // This might be no-op now
         updateSeriesSettings,
         addIndicator,
         addCompareLayer
@@ -30,33 +31,25 @@ function Toolbar() {
     const [showIndicators, setShowIndicators] = useState(false)
     const [activeTimeframe, setActiveTimeframe] = useState('1d')
 
-    // Derived from first chart for now
-    const mainChart = charts[0]
-    // Assume first pane has main series at index 0
-    const mainSeries = mainChart?.panes?.[0]?.series?.[0]
+    // Main Series Logic
+    // Find the series marked as 'main' or fallback to first series of first pane
+    const mainPane = panes.find(p => p.id === 'main-pane') || panes[0]
+    const mainSeries = mainPane?.series.find(s => s.isMain) || mainPane?.series[0]
     const currentTicker = mainSeries?.ticker || 'Select Symbol'
 
     const handleSymbolSelect = (symbol) => {
-        if (mainChart) {
-            if (searchMode === 'compare') {
-                addCompareLayer(mainChart.id, symbol)
-            } else {
-                // Update main layer of the first chart
-                if (mainChart) {
-                    // Update ALL series in the main pane? Or just Main + Volume?
-                    // Better: Update Main Series, and find Volume series to update too.
-                    const mainPane = mainChart.panes[0] // Assuming main pane
-                    if (mainPane) {
-                        mainPane.series.forEach(s => {
-                            if (s.isMain) {
-                                updateSeriesSettings(mainChart.id, s.id, { ticker: symbol })
-                            } else if (s.chartType === 'volume' || s.priceScale === 'volume_scale') {
-                                // Also update volume ticker
-                                updateSeriesSettings(mainChart.id, s.id, { ticker: symbol })
-                            }
-                        })
+        if (searchMode === 'compare') {
+            addCompareLayer(symbol)
+        } else {
+            // Update All Series in Main Pane (Candles + Volume) where ticker matches
+            // Actually, we usually want to update ALL series that were "linked" to main ticker.
+            // But simple approach: Update Main Series and Volume.
+            if (mainPane) {
+                mainPane.series.forEach(s => {
+                    if (s.isMain || s.chartType === 'volume' || s.priceScale === 'volume_scale') {
+                        updateSeriesSettings(s.id, { ticker: symbol })
                     }
-                }
+                })
             }
         }
         setIsSearchOpen(false)
@@ -64,18 +57,14 @@ function Toolbar() {
     }
 
     const handleIndicatorSelect = (indicator) => {
-        if (mainChart) {
-            addIndicator(mainChart.id, indicator)
-        }
+        addIndicator(indicator)
         setShowIndicators(false)
     }
 
     const handleTimeframeChange = (tf) => {
         setActiveTimeframe(tf)
-        // Update all charts' timeframe
-        charts.forEach(chart => {
-            setChartTimeframe(chart.id, tf)
-        })
+        // Global timeframe? Store assumes components handle it or we set it globally.
+        // setChartTimeframe(tf) // Not fully implemented in new store but kept as stub
     }
 
     return (
