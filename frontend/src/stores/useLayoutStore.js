@@ -169,15 +169,15 @@ export const useLayoutStore = create((set, get) => ({
 
     // Wrapper for Add Indicator
     addIndicator: (indicator) => {
-        // Map common names to codes if UI sends full names
-        // Ideally UI sends code. Assuming indicator.name IS the code like 'RSI'
-        // If it sends 'Индекс...', we need mapping. 
-        // For now, let's assume standard codes or rely on basic name.
+        // Map common names/IDs to codes
+        // Use ID as primary code if available (e.g. 'BTC_GM2', 'RSI', 'MACD')
+        let code = indicator.id || indicator.name
 
-        let code = indicator.name
+        // Legacy name mapping (if ID is not standard)
         if (indicator.name.includes('RSI') || indicator.name.includes('Relative Strength')) code = 'RSI'
         if (indicator.name.includes('SMA') || indicator.name.includes('Simple Moving')) code = 'SMA'
         if (indicator.name.includes('EMA') || indicator.name.includes('Exponential')) code = 'EMA'
+        // For BTC_GM2, the ID is already 'BTC_GM2', so code is correct.
 
         const seriesObj = {
             id: uuidv4(),

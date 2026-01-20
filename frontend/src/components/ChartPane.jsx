@@ -353,6 +353,67 @@ const ChartPane = forwardRef(({
                             [config.id]: { value: last.volume, volume: last.volume }
                         }))
                     }
+                } else if (config.id === 'BTC_GM2' && seriesData.length > 0) {
+                    // HANDLING COMPLEX BTC_GM2 INDICATOR
+                    // 1. Main Line (BTC_GM2) - mapped above to 'series' (assuming generic line created it)
+                    const lineData = seriesData.map(d => ({ time: d.time, value: d.BTC_GM2 }))
+                    series.setData(lineData)
+
+                    // 2. SMA Line (Orange)
+                    const smaId = config.id + '_sma'
+                    let smaSeries = seriesMap.current[smaId]
+                    if (!smaSeries) {
+                        smaSeries = chartRef.current.addLineSeries({
+                            color: '#ff9800',
+                            lineWidth: 1,
+                            priceScaleId: config.priceScaleId || 'right'
+                        })
+                        seriesMap.current[smaId] = smaSeries
+                    }
+                    const smaData = seriesData.map(d => ({ time: d.time, value: d.BTC_GM2_SMA })).filter(d => d.value)
+                    smaSeries.setData(smaData)
+
+                    // 3. Background Zones (Histogram)
+                    const zoneId = config.id + '_zone'
+                    let zoneSeries = seriesMap.current[zoneId]
+                    if (!zoneSeries) {
+                        zoneSeries = chartRef.current.addHistogramSeries({
+                            priceScaleId: 'overlay', // Custom scale
+                            priceFormat: { type: 'custom', formatter: () => '' }
+                        })
+                        // Configure overlay scale to full height
+                        chartRef.current.priceScale('overlay').applyOptions({
+                            visible: false,
+                            scaleMargins: { top: 0, bottom: 0 }
+                        })
+                        seriesMap.current[zoneId] = zoneSeries
+                    }
+                    const zoneData = seriesData.map(d => ({
+                        time: d.time,
+                        value: 1, // Full height relative to scale
+                        color: d.Zone_Color || 'rgba(0,0,0,0)'
+                    }))
+                    zoneSeries.setData(zoneData)
+                    // Move to back? LWC doesn't support z-index nicely, mostly distinct by creation order. 
+                    // We created it AFTER main series, so it might cover?
+                    // Histogram usually draws behind lines if rendered first? No control here.
+                    // But opacity is low, so it should be fine.
+
+                    // 4. Markers
+                    const markers = []
+                    seriesData.forEach(d => {
+                        if (d.Signal_Buy) {
+                            markers.push({ time: d.time, position: 'belowBar', color: '#00E676', shape: 'arrowUp', text: 'BUY' })
+                        } else if (d.Signal_Sell) {
+                            markers.push({ time: d.time, position: 'aboveBar', color: '#FF5252', shape: 'arrowDown', text: 'SELL' })
+                        }
+                    })
+                    series.setMarkers(markers)
+                }
+                // Generic Fallback (if not caught by specific types above)
+                else if (!config.chartType) {
+                    // Fallback for generic line?
+                    // Existing logic might have done it inside 'line' block assuming chartType is set.
                 }
             }
 

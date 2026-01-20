@@ -78,6 +78,35 @@ function ChartPanel() {
         const fetchSeriesData = async (series) => {
             if (series.data && series.data.length > 0) return // Already loaded
 
+            // 0. PRIORITY: Server-Side Computed Indicators (BTC_GM2)
+            if (series.id === 'BTC_GM2' || series.ticker === 'BTC_GM2') {
+                const mainPane = panes.find(p => p.id === 'main-pane') || panes[0]
+                const sourceSeries = mainPane?.series.find(s => s.isMain) || mainPane?.series[0]
+
+                if (sourceSeries && sourceSeries.data && sourceSeries.data.length > 0) {
+                    if (series.data && series.data.length > 0) return
+
+                    try {
+                        const response = await fetch(`${API_BASE}/indicators`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                data: sourceSeries.data,
+                                indicator: 'BTC_GM2',
+                                params: series.params || { sma_weeks: 52 }
+                            })
+                        })
+                        const json = await response.json()
+                        if (json.data && json.data.length > 0) {
+                            setSeriesData(series.id, json.data)
+                        }
+                    } catch (e) {
+                        console.error("Error calculating BTC_GM2:", e)
+                    }
+                }
+                return
+            }
+
             // 1. Client-Side Computed Indicators (RSI, SMA...)
             if (series.isComputed) {
                 // Find main data (source)
@@ -108,35 +137,7 @@ function ChartPanel() {
                 return
             }
 
-            // 2. Server-Side Computed Indicators (BTC_GM2)
-            if (series.id === 'BTC_GM2' || series.ticker === 'BTC_GM2') {
-                const mainPane = panes.find(p => p.id === 'main-pane') || panes[0]
-                const sourceSeries = mainPane?.series.find(s => s.isMain) || mainPane?.series[0]
 
-                if (sourceSeries && sourceSeries.data && sourceSeries.data.length > 0) {
-                    // Check if data loaded to avoid loop, but we must check if input data changed?
-                    if (series.data && series.data.length > 0) return
-
-                    try {
-                        const response = await fetch(`${API_BASE}/indicators`, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                                data: sourceSeries.data,
-                                indicator: 'BTC_GM2',
-                                params: series.params || { sma_weeks: 52 }
-                            })
-                        })
-                        const json = await response.json()
-                        if (json.data && json.data.length > 0) {
-                            setSeriesData(series.id, json.data)
-                        }
-                    } catch (e) {
-                        console.error("Error calculating BTC_GM2:", e)
-                    }
-                }
-                return
-            }
 
             if (!series.ticker) return
             // Don't fetch data for client-side indicators if flagged (double check)

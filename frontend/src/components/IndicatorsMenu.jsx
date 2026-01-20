@@ -7,7 +7,7 @@ const INDICATORS = [
     { id: 'RSI', name: 'Индекс относительной силы (RSI)', category: 'Oscillator', type: 'pane', defaultParams: { length: 14 } },
     { id: 'MACD', name: 'Схождение/расхождение скользящих средних (MACD)', category: 'Oscillator', type: 'pane', defaultParams: { fast: 12, slow: 26, signal: 9 } },
     { id: 'Bollinger', name: 'Полосы Боллинджера (BB)', category: 'Volatility', type: 'overlay', defaultParams: { length: 20, mult: 2.0 } },
-    { id: 'BTC_GM2', name: 'BTC vs Global M2 (Custom)', category: 'Custom', type: 'pane', defaultParams: { sma_weeks: 52 } }
+    { id: 'BTC_GM2', name: 'BTC vs Global M2 (Custom)', category: 'Custom', type: 'pane', chartType: 'line', defaultParams: { sma_weeks: 52 } }
 ]
 
 const TABS = ['Все', 'Избранное', 'Встроенные', 'Скрипты', 'Мои скрипты']

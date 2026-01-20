@@ -158,6 +158,10 @@ def calculate_indicator(req: IndicatorRequest):
         return {"indicator": req.indicator, "data": result_json}
 
     except Exception as e:
+        import traceback
+        with open("error.log", "a") as f:
+            f.write(f"\n[{pd.Timestamp.now()}] Indicator Error: {req.indicator}\n")
+            traceback.print_exc(file=f)
         print(f"Error calculating {req.indicator}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
