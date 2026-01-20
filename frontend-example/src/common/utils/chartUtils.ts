@@ -5,10 +5,10 @@
 import { ChartPeriod } from '../../types/chart.types'
 import { ChartDataPoint } from '../../services/api'
 
-import { 
-  formatDateForAxis, 
-  formatDateForTooltip, 
-  getXAxisTicks 
+import {
+  formatDateForAxis,
+  formatDateForTooltip,
+  getXAxisTicks
 } from './chartTimeUtils'
 
 /**
@@ -20,8 +20,8 @@ export const getChartColor = (data: ChartDataPoint[]): string => {
   }
   const firstPrice = data[0]?.price || 0
   const lastPrice = data[data.length - 1]?.price || 0
-  return lastPrice >= firstPrice 
-    ? 'var(--color-state-success)' 
+  return lastPrice >= firstPrice
+    ? 'var(--color-state-success)'
     : 'var(--color-state-destructive)'
 }
 
@@ -29,18 +29,18 @@ export const getChartColor = (data: ChartDataPoint[]): string => {
  * Calculates a uniform range for the Y axis
  */
 export const getYAxisDomain = (
-  data: ChartDataPoint[], 
+  data: ChartDataPoint[],
   period: ChartPeriod,
   triggerLevels?: { upper?: number; lower?: number }
 ): [number, number] => {
   if (data.length === 0) return [0, 1]
-  
+
   const prices = data.map(item => item.price).filter(p => p > 0)
   if (prices.length === 0) return [0, 1]
-  
+
   let minPrice = Math.min(...prices)
   let maxPrice = Math.max(...prices)
-  
+
   // If there are trigger levels, consider them in the range calculation
   if (triggerLevels) {
     if (triggerLevels.upper !== undefined) {
@@ -52,38 +52,38 @@ export const getYAxisDomain = (
       maxPrice = Math.max(maxPrice, triggerLevels.lower)
     }
   }
-  
+
   const range = maxPrice - minPrice
   const avgPrice = (minPrice + maxPrice) / 2
-  
+
   // Use percentage relationship for all coins:
   // For 1D timeframe, use a smaller percentage (8%), for the rest - 15%
   const relativeRangePercent = avgPrice > 0 ? range / avgPrice : 0
   const targetPercent = period === '1d' ? 0.08 : 0.15 // 8% for 1D, 15% for the rest
-  
+
   let adjustedMin = minPrice
   let adjustedMax = maxPrice
-  
+
   if (avgPrice > 0 && relativeRangePercent < targetPercent) {
     // Expand the range to targetPercent from the average price for better visibility
     const targetRange = avgPrice * targetPercent
-    
+
     // Calculate how much data is offset from the center
     const dataCenter = avgPrice
     const dataRange = range
-    
+
     // Expand proportionally: expand more in the direction where there is more data
     const expansionNeeded = targetRange - dataRange
-    
+
     if (expansionNeeded > 0) {
       // Calculate the offset of data from the center of the range
       const rangeCenter = (minPrice + maxPrice) / 2
       const offsetFromCenter = dataCenter - rangeCenter
-      
+
       // Expand more in the direction of the data offset
       const expansionDown = expansionNeeded * (0.5 + Math.max(0, -offsetFromCenter) / dataRange)
       const expansionUp = expansionNeeded * (0.5 + Math.max(0, offsetFromCenter) / dataRange)
-      
+
       adjustedMin = Math.max(0, minPrice - expansionDown)
       adjustedMax = maxPrice + expansionUp
     }
@@ -93,7 +93,7 @@ export const getYAxisDomain = (
     adjustedMin = Math.max(0, minPrice - padding)
     adjustedMax = maxPrice + padding
   }
-  
+
   // Determine the rounding step based on the range
   const finalRange = adjustedMax - adjustedMin
   let step: number
@@ -122,16 +122,16 @@ export const getYAxisDomain = (
   } else {
     step = 0.00000002
   }
-  
+
   // Round to the nearest value with the step
   adjustedMin = Math.floor(adjustedMin / step) * step
   adjustedMax = Math.ceil(adjustedMax / step) * step
-  
+
   // Make sure min < max
   if (adjustedMin >= adjustedMax) {
     adjustedMax = adjustedMin + step * 2
   }
-  
+
   return [adjustedMin, adjustedMax]
 }
 
@@ -141,9 +141,9 @@ export const getYAxisDomain = (
 export const getYAxisTicks = (domain: [number, number], tickCount: number = 5): number[] | undefined => {
   const [min, max] = domain
   const range = max - min
-  
+
   if (range === 0) return undefined
-  
+
   // Determine the number of significant digits for rounding based on the range
   const getSignificantDigits = (val: number): number => {
     if (val >= 1000) return 0
@@ -158,22 +158,22 @@ export const getYAxisTicks = (domain: [number, number], tickCount: number = 5): 
     if (val >= 0.000001) return 8
     return 9
   }
-  
+
   const step = range / (tickCount - 1)
   const significantDigits = getSignificantDigits(range)
   const multiplier = Math.pow(10, significantDigits)
-  
+
   const ticks: number[] = []
-  
+
   for (let i = 0; i < tickCount; i++) {
     const tickValue = min + (step * i)
     const roundedTick = Math.round(tickValue * multiplier) / multiplier
     ticks.push(roundedTick)
   }
-  
+
   // Remove duplicates
   const uniqueTicks = Array.from(new Set(ticks))
-  
+
   return uniqueTicks.length > 0 ? uniqueTicks : undefined
 }
 
@@ -182,10 +182,10 @@ export const getYAxisTicks = (domain: [number, number], tickCount: number = 5): 
  */
 export const getVolumeDomain = (data: ChartDataPoint[]): [number, number] => {
   if (data.length === 0) return [0, 1]
-  
+
   const volumes = data.map(item => item.volume || 0).filter(v => v > 0)
   if (volumes.length === 0) return [0, 1]
-  
+
   const maxVolume = Math.max(...volumes)
   // Increase the maximum value by 2 times, so that volumes occupy only ~30% of the height
   return [0, maxVolume * 2]
@@ -265,7 +265,7 @@ export const calculateChartValues = (
   const yAxisTicks = getYAxisTicks(yAxisDomain)
   const volumeDomain = getVolumeDomain(data)
   const xAxisTicks = getXAxisTicks(data, period)
-  
+
   return {
     chartColor,
     yAxisDomain,
@@ -280,8 +280,52 @@ export const calculateChartValues = (
 }
 
 // Export functions for working with dates for backward compatibility
-export { 
-  formatDateForAxis, 
-  formatDateForTooltip, 
-  getXAxisTicks 
+export {
+  formatDateForAxis,
+  formatDateForTooltip,
+  getXAxisTicks
 } from './chartTimeUtils'
+
+/**
+ * Adds ghost candles (padding) to the end of the data to allow scrolling "into the future"
+ */
+export const padDataWithGhostCandles = (
+  data: ChartDataPoint[],
+  period: ChartPeriod,
+  count: number = 50
+): ChartDataPoint[] => {
+  if (!data || data.length === 0) return []
+
+  const result = [...data]
+  const lastPoint = result[result.length - 1]
+  const lastDate = new Date(lastPoint.date).getTime()
+
+  // Determine interval in milliseconds
+  let intervalMs = 0
+  switch (period as string) {
+    case '1m': intervalMs = 60 * 1000; break;
+    case '5m': intervalMs = 5 * 60 * 1000; break;
+    case '15m': intervalMs = 15 * 60 * 1000; break;
+    case '1h': intervalMs = 60 * 60 * 1000; break;
+    case '4h': intervalMs = 4 * 60 * 60 * 1000; break;
+    case '1d': intervalMs = 24 * 60 * 60 * 1000; break;
+    case '1w': intervalMs = 7 * 24 * 60 * 60 * 1000; break;
+    default: intervalMs = 24 * 60 * 60 * 1000; // Default to 1d
+  }
+
+  for (let i = 1; i <= count; i++) {
+    const nextDate = new Date(lastDate + (intervalMs * i)).toISOString()
+    result.push({
+      date: nextDate,
+      price: null,
+      volume: 0,
+      high: null,
+      low: null,
+      open: null,
+      close: null,
+      // @ts-ignore - casting to match type if optional fields missing
+    } as any)
+  }
+
+  return result
+}

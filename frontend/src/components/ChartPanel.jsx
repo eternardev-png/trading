@@ -207,18 +207,20 @@ function ChartPanel({ chart, index }) {
         // Unsubscribe cache
         const unsubs = []
 
-        const sync = (sourceId, timeRange) => {
+        // CHANGE: Use LogicalRange instead of TimeRange
+        const sync = (sourceId, logicalRange) => {
             // Prevent recursive sync
             if (isSyncing.current) return
 
-            // Validate timeRange
-            if (!timeRange || !timeRange.from || !timeRange.to) return
+            // Validate logicalRange
+            if (!logicalRange) return
 
             isSyncing.current = true
             refs.forEach(ref => {
                 if (ref.id !== sourceId && ref.chart) {
                     try {
-                        ref.chart.timeScale().setVisibleRange(timeRange)
+                        // Use setVisibleLogicalRange for index-based sync (allows flying into void)
+                        ref.chart.timeScale().setVisibleLogicalRange(logicalRange)
                     } catch (e) {
                         // Ignore sync errors
                     }
@@ -229,27 +231,26 @@ function ChartPanel({ chart, index }) {
 
         refs.forEach(ref => {
             if (ref.chart) {
-                const handler = (timeRange) => {
-                    // Only handle if NOT currently applying a sync
-                    // Note: setVisibleRange triggers this handler synchronously in some versions,
-                    // or asynchronously. The lock handles synchronous echo.
-                    // For async echo, we might need comparison?
-                    // But usually lock is enough for the immediate "clamp" response.
+                // CHANGE: Subscribe to LogicalRangeChange
+                const handler = (logicalRange) => {
                     if (!isSyncing.current) {
-                        sync(ref.id, timeRange)
+                        sync(ref.id, logicalRange)
                     }
                 }
-                ref.chart.timeScale().subscribeVisibleTimeRangeChange(handler)
+
+                // IMPORTANT: Method changed to subscribeVisibleLogicalRangeChange
+                ref.chart.timeScale().subscribeVisibleLogicalRangeChange(handler)
+
                 unsubs.push(() => {
                     try {
-                        ref.chart.timeScale().unsubscribeVisibleTimeRangeChange(handler)
+                        ref.chart.timeScale().unsubscribeVisibleLogicalRangeChange(handler)
                     } catch (e) { }
                 })
             }
         })
 
         return () => unsubs.forEach(u => u())
-    }, [panes.length, panes.map(p => p.id).join(','), readyCharts]) // Re-sync when panes change or charts report ready
+    }, [panes.length, panes.map(p => p.id).join(','), readyCharts])
 
     const handleChartReady = () => {
         setReadyCharts(p => p + 1)

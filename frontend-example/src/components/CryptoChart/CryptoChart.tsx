@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react'
+import React, { useMemo, useState, useEffect, useRef } from 'react'
 import {
   Area,
   Bar,
@@ -10,9 +10,9 @@ import {
   YAxis,
 } from 'recharts'
 
-import { 
-  convertServerDateToLocal, 
-  getCurrentLocalTime 
+import {
+  convertServerDateToLocal,
+  getCurrentLocalTime
 } from '../../common/utils/chartTimeUtils'
 
 import { ChartDataPoint } from '../../services/api'
@@ -25,6 +25,7 @@ import {
   formatPriceForYAxis,
   formatVolume,
   getChartColor,
+  padDataWithGhostCandles,
 } from '../../common/utils/chartUtils'
 import { getPriceDecimals } from '../../common/utils/price'
 
@@ -53,15 +54,147 @@ const CryptoChart: React.FC<CryptoChartProps> = ({
     tooltipFormatter,
   } = options
 
-  // Calculate values for the chart
+  // -- 1. Data Prep (Ghost Candles) --
+  const paddedData = useMemo(() => {
+    return padDataWithGhostCandles(data, period, 50)
+  }, [data, period])
+
+  // -- 2. Viewport State (Infinite Scroll Logic) --
+  // Initialize showing the last N candles (e.g. 50) or all if fewer
+  const [viewState, setViewState] = useState<{ startIndex: number; endIndex: number } | null>(null)
+
+  useEffect(() => {
+    // Reset view when data completely changes (e.g. coin switch), but try to preserve if just update
+    if (paddedData.length > 0) {
+      setViewState((prev) => {
+        // Initial load
+        if (!prev) {
+          const initialWindowSize = 60
+          const start = Math.max(0, paddedData.length - initialWindowSize)
+          return { startIndex: start, endIndex: paddedData.length }
+        }
+        // Data update (live price) - try to follow the right edge if we were attached to it
+        const prevLen = prev.endIndex - prev.startIndex
+        const isAttachedToRight = prev.endIndex >= paddedData.length - 2 // tolerance
+
+        if (isAttachedToRight) {
+          return { startIndex: Math.max(0, paddedData.length - prevLen), endIndex: paddedData.length }
+        }
+        // Otherwise keep bounds but clamp to new length
+        return {
+          startIndex: Math.min(prev.startIndex, paddedData.length - 1),
+          endIndex: Math.min(prev.endIndex, paddedData.length)
+        }
+      })
+    }
+  }, [paddedData.length, data[0]?.date]) // Reset on length change or symbol change signals
+
+  // -- 3. Interaction Handlers --
+  const [isDragging, setIsDragging] = useState(false)
+  const dragStartRef = useRef<{ x: number; start: number; end: number } | null>(null)
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (!viewState) return
+    setIsDragging(true)
+    dragStartRef.current = {
+      x: e.clientX,
+      start: viewState.startIndex,
+      end: viewState.endIndex,
+    }
+  }
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isDragging || !dragStartRef.current || !viewState) return
+
+    // Calculate delta
+    // Approximate candle width in pixels (Container Width / Visible Candles)
+    // We assume container width is roughly e.currentTarget.clientWidth
+    const containerWidth = e.currentTarget.clientWidth
+    const visibleCount = dragStartRef.current.end - dragStartRef.current.start
+    const pixelsPerCandle = containerWidth / visibleCount
+
+    const deltaX = e.clientX - dragStartRef.current.x
+    const deltaCandles = Math.round(deltaX / pixelsPerCandle)
+
+    // Invert delta because dragging left means moving into future (shifting view right) -> or wait?
+    // Dragging RIGHT (deltaX > 0) should move chart RIGHT (show past) -> startIndex decreases
+    // So: newStart = initialStart - delta
+
+    let newStart = dragStartRef.current.start - deltaCandles
+    let newEnd = dragStartRef.current.end - deltaCandles
+    const windowSize = dragStartRef.current.end - dragStartRef.current.start
+
+    // -- CRITICAL FIX: Window Size Lock --
+    // Clamp logic that strictly preserves windowSize
+
+    // 1. Check Left Wall
+    if (newStart < 0) {
+      newStart = 0
+      newEnd = newStart + windowSize // Lock size
+    }
+
+    // 2. Check Right Wall
+    if (newEnd > paddedData.length) {
+      newEnd = paddedData.length
+      newStart = newEnd - windowSize // Lock size
+    }
+
+    setViewState({ startIndex: newStart, endIndex: newEnd })
+  }
+
+  const handleMouseUp = () => {
+    setIsDragging(false)
+    dragStartRef.current = null
+  }
+
+  const handleWheel = (e: React.WheelEvent) => {
+    // Optional: Zoom logic
+    if (!viewState) return
+    e.preventDefault() // might need passive listener fix in real DOM
+
+    const ZOOM_SPEED = 0.5
+    const sign = Math.sign(e.deltaY)
+
+    // Shrink/Expand window
+    const currentSize = viewState.endIndex - viewState.startIndex
+    const deltaSize = Math.round(sign * currentSize * 0.1) // 10% zoom
+
+    if (deltaSize === 0) return
+
+    let newSize = currentSize + deltaSize
+    // Limits
+    newSize = Math.max(10, newSize) // min 10 candles
+    newSize = Math.min(paddedData.length, newSize) // max all data
+
+    // Zoom centered or from right? TradingView usually zooms from right if right edge is visible
+    // Simple approach: Keep right edge fixed-ish usually preferred for trading
+
+    let newEnd = viewState.endIndex
+    let newStart = newEnd - newSize
+
+    if (newStart < 0) {
+      newStart = 0
+      newEnd = newStart + newSize
+    }
+
+    setViewState({ startIndex: newStart, endIndex: newEnd })
+  }
+
+  // Slice data for rendering
+  const visibleData = useMemo(() => {
+    if (!viewState) return paddedData
+    return paddedData.slice(viewState.startIndex, viewState.endIndex)
+  }, [paddedData, viewState])
+
+  // Recalculate ticks and domain based on visible slice
   const chartCalculations = useMemo(() => {
-    // Convert triggerLines to triggerLevels for calculateChartValues
     const triggerLevels = triggerLines ? {
       upper: triggerLines.upper?.value,
       lower: triggerLines.lower?.value,
     } : undefined
-    return calculateChartValues(data, period, priceDecimals, triggerLevels)
-  }, [data, period, priceDecimals, triggerLines])
+    // IMPORTANT: Calculate Y domain based ONLY on visible data, enabling auto-scale during pan
+    return calculateChartValues(visibleData, period, priceDecimals, triggerLevels)
+  }, [visibleData, period, priceDecimals, triggerLines])
 
   // Determine the color of the chart
   const chartColor = customColor || chartCalculations.chartColor
@@ -72,10 +205,10 @@ const CryptoChart: React.FC<CryptoChartProps> = ({
     const ticks = chartCalculations.xAxisTicks
     const isFirst = index === 0
     const isLast = ticks && index === ticks.length - 1
-    
+
     // Shift: first mark to the right by 8px, last mark to the left by 8px
     const offsetX = isFirst ? 8 : isLast ? -8 : 0
-    
+
     return (
       <text
         x={x + offsetX}
@@ -90,23 +223,23 @@ const CryptoChart: React.FC<CryptoChartProps> = ({
   }
 
   // Formatting for the Y axis
-  const yAxisTickFormatter = yAxisFormatter 
-    ? yAxisFormatter 
+  const yAxisTickFormatter = yAxisFormatter
+    ? yAxisFormatter
     : (value: number) => formatPriceForYAxis(value, priceDecimals)
 
   // Formatting for the price tooltip
-  const priceTooltipFormatter = tooltipFormatter?.price 
-    ? tooltipFormatter.price 
+  const priceTooltipFormatter = tooltipFormatter?.price
+    ? tooltipFormatter.price
     : (value: number) => formatPriceForTooltip(value, priceDecimals)
 
   // Formatting for the volume tooltip
-  const volumeTooltipFormatter = tooltipFormatter?.volume 
-    ? tooltipFormatter.volume 
+  const volumeTooltipFormatter = tooltipFormatter?.volume
+    ? tooltipFormatter.volume
     : formatVolume
 
   // Formatting for the date tooltip
-  const dateTooltipFormatter = tooltipFormatter?.date 
-    ? tooltipFormatter.date 
+  const dateTooltipFormatter = tooltipFormatter?.date
+    ? tooltipFormatter.date
     : (dateStr: string) => formatDateForTooltip(dateStr, period)
 
   if (isLoading) {
@@ -134,10 +267,18 @@ const CryptoChart: React.FC<CryptoChartProps> = ({
   }
 
   return (
-    <div className={styles.chartContainer}>
+    <div
+      className={styles.chartContainer}
+      onMouseDown={handleMouseDown}
+      onMouseMove={handleMouseMove}
+      onMouseUp={handleMouseUp}
+      onMouseLeave={handleMouseUp}
+      onWheel={handleWheel}
+      style={{ cursor: isDragging ? 'grabbing' : 'grab' }}
+    >
       <ResponsiveContainer width="100%" height={height}>
         <ComposedChart
-          data={data}
+          data={visibleData}
           margin={margin}
         >
           <defs>
@@ -146,10 +287,10 @@ const CryptoChart: React.FC<CryptoChartProps> = ({
               <stop offset="100%" stopColor={chartColor} stopOpacity={0.05} />
             </linearGradient>
           </defs>
-          
+
           {/* X axis */}
-          <XAxis 
-            dataKey="date" 
+          <XAxis
+            dataKey="date"
             axisLine={{ stroke: 'var(--color-border-separator)' }}
             tickLine={{ stroke: 'transparent' }}
             height={40}
@@ -159,9 +300,9 @@ const CryptoChart: React.FC<CryptoChartProps> = ({
             tick={renderCustomTick}
             minTickGap={period === '1d' ? 12 : period === '30d' || period === '1y' ? 8 : 6}
           />
-          
+
           {/* Y axis for price */}
-          <YAxis 
+          <YAxis
             yAxisId="price"
             orientation="right"
             domain={chartCalculations.yAxisDomain}
@@ -173,17 +314,17 @@ const CryptoChart: React.FC<CryptoChartProps> = ({
             allowDecimals={true}
             tickFormatter={yAxisTickFormatter}
           />
-          
+
           {/* Y axis for volume (hidden) */}
           {showVolume && (
-            <YAxis 
+            <YAxis
               yAxisId="volume"
               orientation="left"
               hide
               domain={chartCalculations.volumeDomain}
             />
           )}
-          
+
           {/* Tooltip */}
           <Tooltip
             contentStyle={{
@@ -192,12 +333,12 @@ const CryptoChart: React.FC<CryptoChartProps> = ({
               borderRadius: '8px',
               padding: '8px 12px',
             }}
-            labelStyle={{ 
+            labelStyle={{
               color: 'var(--color-foreground-primary)',
               fontSize: '12px',
               marginBottom: '4px',
             }}
-            itemStyle={{ 
+            itemStyle={{
               color: 'var(--color-foreground-primary)',
               fontSize: '12px',
             }}
@@ -213,7 +354,7 @@ const CryptoChart: React.FC<CryptoChartProps> = ({
             labelFormatter={(label) => dateTooltipFormatter(label as string)}
             cursor={{ stroke: chartColor, strokeWidth: 1, strokeDasharray: '3 3' }}
           />
-          
+
           {/* Price chart */}
           <Area
             yAxisId="price"
@@ -223,15 +364,15 @@ const CryptoChart: React.FC<CryptoChartProps> = ({
             strokeWidth={2}
             fill="url(#colorGradient)"
             dot={false}
-            activeDot={{ 
-              r: 4, 
-              fill: chartColor, 
-              strokeWidth: 2, 
-              stroke: 'var(--color-background-primary)' 
+            activeDot={{
+              r: 4,
+              fill: chartColor,
+              strokeWidth: 2,
+              stroke: 'var(--color-background-primary)'
             }}
             connectNulls={false}
           />
-          
+
           {/* Volumes */}
           {showVolume && (
             <Bar
@@ -242,7 +383,7 @@ const CryptoChart: React.FC<CryptoChartProps> = ({
               radius={[2, 2, 0, 0]}
             />
           )}
-          
+
           {/* Current price line */}
           {showCurrentPriceLine && currentPrice != null && (
             <ReferenceLine
@@ -259,7 +400,7 @@ const CryptoChart: React.FC<CryptoChartProps> = ({
               }}
             />
           )}
-          
+
           {/* Trigger lines */}
           {showTriggerLines && triggerLines?.upper !== undefined && (
             <ReferenceLine
@@ -277,7 +418,7 @@ const CryptoChart: React.FC<CryptoChartProps> = ({
               }}
             />
           )}
-          
+
           {showTriggerLines && triggerLines?.lower !== undefined && (
             <ReferenceLine
               yAxisId="price"

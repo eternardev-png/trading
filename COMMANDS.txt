@@ -1,4 +1,16 @@
 stop: 
+
+
 taskkill /F /IM python.exe /IM node.exe
+
 start: 
+
+
 .\start.ps1
+
+
+ГИТ ХАБ:
+
+git add .
+git commit -m "Fix chart navigation: Logical Range Sync and Ghost Candles"
+git push origin main
