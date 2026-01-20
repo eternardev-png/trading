@@ -35,6 +35,7 @@ const ChartPane = forwardRef(({
     const containerRef = useRef(null)
     const chartRef = useRef(null)
     const seriesMap = useRef({})
+    const isFirstLoad = useRef(true)
 
     const [ohlc, setOhlc] = useState({})
     const [seriesVisible, setSeriesVisible] = useState({})
@@ -81,11 +82,13 @@ const ChartPane = forwardRef(({
                 visible: !isTimeline,
                 borderVisible: false,
                 scaleMargins: { top: 0.05, bottom: 0.12 },
+                autoScale: true,
             },
             leftPriceScale: {
                 visible: !isTimeline,
                 borderVisible: false,
                 scaleMargins: { top: 0.05, bottom: 0.12 },
+                autoScale: true,
             },
             timeScale: {
                 visible: Boolean(isTimeline),
@@ -320,6 +323,25 @@ const ChartPane = forwardRef(({
         } else {
             // First load: Fit content or set default range
             chartRef.current.timeScale().fitContent()
+
+            // START AUTO, THEN LOCK MANUAL
+            // If this is the first data load, we let autoScale finish its job (fitContent),
+            // and then immediately turn it OFF so the user has manual control (no jumping).
+            if (isFirstLoad.current && data.length > 0) {
+                setTimeout(() => {
+                    if (chartRef.current) {
+                        chartRef.current.priceScale('right').applyOptions({ autoScale: false })
+                        chartRef.current.priceScale('left').applyOptions({ autoScale: false })
+
+                        // Sync React state
+                        setScaleModes(prev => ({
+                            left: { ...prev.left, autoScale: false },
+                            right: { ...prev.right, autoScale: false }
+                        }))
+                    }
+                }, 100) // Small delay to ensure render
+                isFirstLoad.current = false
+            }
         }
 
     }, [data, seriesConfigs, seriesVisible])
