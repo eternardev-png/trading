@@ -18,9 +18,8 @@ function Toolbar() {
         layoutMode, setLayoutMode,
         syncCrosshair, setSyncCrosshair,
         syncTimeRange, setSyncTimeRange,
-        charts, addLayer, setChartTimeframe,
-        setLayerData, // Added for updating ticker
-        updateLayerSettings,
+        charts, setChartTimeframe,
+        updateSeriesSettings,
         addIndicator,
         addCompareLayer
     } = useLayoutStore()
@@ -33,7 +32,9 @@ function Toolbar() {
 
     // Derived from first chart for now
     const mainChart = charts[0]
-    const currentTicker = mainChart?.layers[0]?.ticker || 'Select Symbol'
+    // Assume first pane has main series at index 0
+    const mainSeries = mainChart?.panes?.[0]?.series?.[0]
+    const currentTicker = mainSeries?.ticker || 'Select Symbol'
 
     const handleSymbolSelect = (symbol) => {
         if (mainChart) {
@@ -41,8 +42,21 @@ function Toolbar() {
                 addCompareLayer(mainChart.id, symbol)
             } else {
                 // Update main layer of the first chart
-                const mainLayer = mainChart.layers[0]
-                updateLayerSettings(mainChart.id, mainLayer.id, { ticker: symbol })
+                if (mainChart) {
+                    // Update ALL series in the main pane? Or just Main + Volume?
+                    // Better: Update Main Series, and find Volume series to update too.
+                    const mainPane = mainChart.panes[0] // Assuming main pane
+                    if (mainPane) {
+                        mainPane.series.forEach(s => {
+                            if (s.isMain) {
+                                updateSeriesSettings(mainChart.id, s.id, { ticker: symbol })
+                            } else if (s.chartType === 'volume' || s.priceScale === 'volume_scale') {
+                                // Also update volume ticker
+                                updateSeriesSettings(mainChart.id, s.id, { ticker: symbol })
+                            }
+                        })
+                    }
+                }
             }
         }
         setIsSearchOpen(false)
