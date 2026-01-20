@@ -1,0 +1,3 @@
+import streamlit_lightweight_charts_ntf
+import inspect
+print(inspect.signature(streamlit_lightweight_charts_ntf.renderLightweightCharts))

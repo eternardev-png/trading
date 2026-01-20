@@ -1,0 +1,8 @@
+streamlit==1.40.0
+pandas
+
+# The specific python wrapper for Streamlit
+streamlit-lightweight-charts-ntf
+yfinance
+ccxt
+fredapi

@@ -1,0 +1,4 @@
+stop: 
+taskkill /F /IM python.exe /IM node.exe
+start: 
+.\start.ps1

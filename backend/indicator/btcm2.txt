@@ -1,0 +1,95 @@
+//@version=5
+indicator("BTC % of Global M2 - Fixed", shorttitle="BTC % GM2", overlay=true)
+
+// ── Настройки ───────────────────────────────────────────────────────────────
+lead_weeks       = input.int(10,    "Мин. расстояние между сигналами (нед)", minval=1)
+yoy_threshold    = input.float(2.5, "Мин. YoY рост M2 для покупки (%)", step=0.1)
+distance_sell    = input.float(0.7, "Порог Distance для продажи", step=0.05)
+sma_length_input = input.int(52,    "Длина SMA (недель)", minval=10)
+
+// ── Получаем данные ─────────────────────────────────────────────────────────
+btc_cap = request.security("CRYPTOCAP:BTC", timeframe.period, close)
+
+// Global M2 компоненты (в долларах)
+eum2  = request.security("ECONOMICS:EUM2*FX:EURUSD",   "W", close)
+usm2  = request.security("ECONOMICS:USM2",             "W", close)
+cam2  = request.security("ECONOMICS:CAM2*FX_IDC:CADUSD","W", close)
+chm2  = request.security("ECONOMICS:CHM2*FX_IDC:CHFUSD","W", close)
+gbm2  = request.security("ECONOMICS:GBM2*FX:GBPUSD",   "W", close)
+rum2  = request.security("ECONOMICS:RUM2*FX_IDC:RUBUSD","W", close)
+cnm2  = request.security("ECONOMICS:CNM2*FX_IDC:CNYUSD","W", close)
+jpm2  = request.security("ECONOMICS:JPM2*FX_IDC:JPYUSD","W", close)
+
+// Основные крупные экономики (остальные опционально можно добавить позже)
+global_m2 = eum2 + usm2 + cam2 + chm2 + gbm2 + rum2 + cnm2 + jpm2
+
+// Защита от деления на 0 и na
+global_m2 := nz(global_m2, 1)
+
+// ── Расчёты ─────────────────────────────────────────────────────────────────
+btc_percent = (btc_cap / global_m2) * 100
+
+// Длина SMA в барах (примерно)
+sma_length = timeframe.isweekly ? sma_length_input : sma_length_input * 7
+sma_btc    = ta.sma(btc_percent, sma_length)
+
+distance   = btc_percent - sma_btc
+
+// YoY изменение M2 (примерно год назад)
+yoy_change = global_m2 != global_m2[52] ? 
+   (global_m2 - global_m2[52]) / global_m2[52] * 100 : na
+
+// ── Сигналы ─────────────────────────────────────────────────────────────────
+var int last_buy  = na
+var int last_sell = na
+
+// Минимальное расстояние между сигналами в барах (очень приблизительно)
+bars_between = math.max(1, lead_weeks * 5)   // ~5 баров на неделю в среднем
+
+buy_condition  = yoy_change > yoy_threshold and distance < 0
+sell_condition = distance > distance_sell
+
+if buy_condition and (na(last_buy) or bar_index - last_buy >= bars_between)
+    label.new(bar_index, low, "▲", 
+         color = color.green, 
+         textcolor = color.white, 
+         style = label.style_label_up, 
+         yloc = yloc.belowbar, 
+         size = size.normal)
+    last_buy := bar_index
+
+if sell_condition and (na(last_sell) or bar_index - last_sell >= bars_between)
+    label.new(bar_index, high, "▼", 
+         color = color.red, 
+         textcolor = color.white, 
+         style = label.style_label_down, 
+         yloc = yloc.abovebar, 
+         size = size.normal)
+    last_sell := bar_index
+
+// ── Визуализация ────────────────────────────────────────────────────────────
+plot(btc_percent, "BTC % Global M2", color=#00cc99, linewidth=3)
+plot(sma_btc,     "SMA",             color=#ffaa00, linewidth=2)
+
+plotchar(yoy_change, "YoY M2 %", "", location.top, color= yoy_change>0 ? color.blue : color.orange, size=size.tiny)
+
+// Зоны
+bgcolor(distance < -0.3 ? color.new(color.red, 92)  : na, title="Зона недооценки")
+bgcolor(distance >  0.5 ? color.new(color.green,   92)  : na, title="Зона переоценки")
+
+// Текущие значения в таблице (на последнем баре)
+if barstate.islastconfirmedhistory
+    var table t = table.new(position.top_right, 2, 5, bgcolor=color.new(color.black, 75), border_width=1)
+    
+    table.cell(t, 0, 0, "BTC % GM2", text_color=color.white)
+    table.cell(t, 1, 0, str.tostring(btc_percent, "#.###") + "%", text_color=#00cc99)
+    
+    table.cell(t, 0, 1, "Distance", text_color=color.white)
+    table.cell(t, 1, 1, str.tostring(distance, "+#.###;-#.###") + "%", text_color=distance>=0?color.rgb(60, 185, 1):color.rgb(248, 58, 58))
+    
+    table.cell(t, 0, 2, "YoY M2", text_color=color.white)
+    table.cell(t, 1, 2, str.tostring(yoy_change, "#.##") + "%", text_color=color.blue)
+    
+    table.cell(t, 0, 3, "Сигнал", text_color=color.white)
+    table.cell(t, 1, 3, buy_condition ? "▲ ПОКУПКА" : sell_condition ? "▼ ПРОДАЖА" : "—", 
+              text_color = buy_condition ? color.lime : sell_condition ? color.red : color.gray)

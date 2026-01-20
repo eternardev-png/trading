@@ -1,0 +1,162 @@
+/* Main Window Background */
+.root {
+    -fx-background-color: #131722;
+    -fx-font-family: "Segoe UI", sans-serif;
+    -fx-font-size: 12px;
+}
+
+/* --- TOP TOOLBAR --- */
+.toolbar {
+    -fx-background-color: #131722;
+    -fx-padding: 5 10 5 10;
+    -fx-border-color: #2a2e39;
+    -fx-border-width: 0 0 1 0;
+    /* Bottom border only */
+    -fx-spacing: 10;
+    -fx-alignment: CENTER_LEFT;
+}
+
+/* Helper class for separator */
+.separator-vertical {
+    -fx-background-color: #2a2e39;
+    -fx-min-width: 1;
+    -fx-max-width: 1;
+    -fx-pref-height: 20;
+}
+
+/* Text Fields (Ticker Search) */
+.ticker-field {
+    -fx-background-color: transparent;
+    -fx-text-fill: #d1d4dc;
+    -fx-font-weight: bold;
+    -fx-font-size: 14px;
+    -fx-prompt-text-fill: #50535e;
+}
+
+.ticker-field:focused {
+    -fx-background-color: #2a2e39;
+}
+
+/* ComboBox */
+.combo-box {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+}
+
+.combo-box .cell {
+    -fx-text-fill: #d1d4dc;
+    -fx-background-color: transparent;
+}
+
+.combo-box .arrow,
+.combo-box .arrow-button {
+    -fx-background-color: transparent;
+    -fx-padding: 0;
+}
+
+/* Buttons (Generic Toolbar Buttons) */
+.button {
+    -fx-background-color: transparent;
+    -fx-text-fill: #d1d4dc;
+    -fx-cursor: hand;
+    -fx-padding: 5 10;
+}
+
+.button:hover {
+    -fx-background-color: #2a2e39;
+    -fx-background-radius: 4;
+}
+
+.symbol-search-btn {
+    -fx-background-color: transparent;
+    -fx-text-fill: #d1d4dc;
+    -fx-font-size: 14px;
+    -fx-font-weight: bold;
+    -fx-cursor: hand;
+    -fx-alignment: CENTER_LEFT;
+}
+
+.symbol-search-btn:hover {
+    -fx-background-color: #2a2e39;
+    -fx-background-radius: 4;
+}
+
+.timeframe-btn {
+    -fx-background-color: transparent;
+    -fx-text-fill: #d1d4dc;
+    -fx-font-size: 12px;
+    -fx-padding: 4 8;
+    -fx-cursor: hand;
+}
+
+.timeframe-btn:hover {
+    -fx-text-fill: #2962ff;
+    /* TV Blue on hover */
+    -fx-background-color: rgba(41, 98, 255, 0.1);
+    -fx-background-radius: 4;
+}
+
+.timeframe-btn.active {
+    -fx-text-fill: #2962ff;
+    -fx-font-weight: bold;
+}
+
+.toolbar-btn {
+    -fx-background-color: transparent;
+    -fx-text-fill: #d1d4dc;
+    -fx-font-size: 12px;
+    -fx-cursor: hand;
+}
+
+.toolbar-btn:hover {
+    -fx-background-color: #2a2e39;
+    -fx-background-radius: 4;
+}
+
+.button-primary {
+    -fx-background-color: #2962ff;
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+    -fx-background-radius: 4;
+    -fx-padding: 5 15;
+    -fx-cursor: hand;
+}
+
+.button-primary:hover {
+    -fx-background-color: #1e53e5;
+}
+
+/* --- SIDE TOOLBAR (LEFT) --- */
+.side-toolbar {
+    -fx-background-color: #131722;
+    -fx-border-color: #2a2e39;
+    -fx-border-width: 0 1 0 0;
+    /* Right border */
+    -fx-padding: 10 5;
+    -fx-spacing: 15;
+    -fx-alignment: TOP_CENTER;
+    -fx-min-width: 50;
+    -fx-pref-width: 50;
+}
+
+/* --- RIGHT PANEL (WATCHLIST) --- */
+.right-panel {
+    -fx-background-color: #131722;
+    -fx-border-color: #2a2e39;
+    -fx-border-width: 0 0 0 1;
+    /* Left border */
+    -fx-min-width: 250;
+}
+
+.panel-header {
+    -fx-text-fill: #d1d4dc;
+    -fx-font-size: 13px;
+    -fx-padding: 10;
+    -fx-border-color: #2a2e39;
+    -fx-border-width: 0 0 1 0;
+}
+
+/* --- CHART AREA --- */
+.chart-container {
+    -fx-background-color: #000000;
+}

@@ -1,0 +1,12 @@
+Warning: Could not import TVLoader: No module named 'tvDatafeed'
+DataLoader initializing...
+Initializing ccxt...
+ccxt initialized.
+Fetching data for BTC/USDT 1d from auto
+Loaded cache for BTC/USDT. Last data: 2026-01-18 00:00:00
+No new data for BTC/USDT.
+INFO:     127.0.0.1:56363 - "GET /api/v1/data?ticker=BTC%2FUSDT&timeframe=1d HTTP/1.1" 200 OK
+Fetching data for BTC/USDT 1d from auto
+Loaded cache for BTC/USDT. Last data: 2026-01-18 00:00:00
+No new data for BTC/USDT.
+INFO:     127.0.0.1:55985 - "GET /api/v1/data?ticker=BTC%2FUSDT&timeframe=1d HTTP/1.1" 200 OK

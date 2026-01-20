@@ -1,0 +1,74 @@
+.left-sidebar {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 52px;
+    /* Standard TV width check */
+    min-width: 52px;
+    padding: 6px 0;
+    background: var(--bg-primary);
+    border-right: 1px solid var(--border-color, #2a2e39);
+    z-index: 10;
+
+    &__wrapper {
+        position: relative;
+        width: 100%;
+        display: flex;
+        justify-content: center;
+        margin-bottom: 2px;
+    }
+
+    &__tool {
+        width: 38px;
+        height: 38px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 14px;
+        color: var(--text-secondary, #b2b5be);
+        background: transparent;
+        border-radius: 4px;
+        transition: all 0.1s;
+        border: none;
+        cursor: pointer;
+        position: relative;
+        padding: 0;
+
+        &:hover {
+            background: var(--bg-secondary, #2a2e39);
+            color: var(--text-primary, #d1d4dc);
+        }
+
+        &.active {
+            color: var(--accent-blue, #2962ff);
+            background: var(--bg-secondary, #2a2e39);
+
+            svg {
+                // If we want the icon to change stroke color heavily
+                stroke: currentColor;
+            }
+        }
+
+        svg {
+            pointer-events: none;
+        }
+    }
+
+    &__arrow {
+        position: absolute;
+        bottom: 2px;
+        right: 2px;
+        width: 6px;
+        height: 6px;
+        pointer-events: none;
+
+        svg {
+            display: block;
+        }
+    }
+
+    &__spacer {
+        flex: 1;
+        min-height: 10px;
+    }
+}
