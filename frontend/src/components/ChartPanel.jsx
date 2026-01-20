@@ -8,7 +8,7 @@ import './ChartPanel.scss'
 const API_BASE = 'http://127.0.0.1:8000/api/v1'
 
 function ChartPanel({ chart, index }) {
-    const { setLayerData, updateLayerSettings, reorderLayer } = useLayoutStore()
+    const { setLayerData, updateLayerSettings, reorderLayer, movePane } = useLayoutStore()
     const [data, setData] = useState([])
     const [showLayers, setShowLayers] = useState(false)
     const [isSearchOpen, setIsSearchOpen] = useState(false)
@@ -151,10 +151,22 @@ function ChartPanel({ chart, index }) {
                 }
             })
 
+            // 3. Sort Panes based on paneOrder
+            if (chart.paneOrder && chart.paneOrder.length > 0) {
+                newPanes.sort((a, b) => {
+                    const idxA = chart.paneOrder.indexOf(a.id)
+                    const idxB = chart.paneOrder.indexOf(b.id)
+                    // If not found in order (newly added), push to end
+                    const valA = idxA === -1 ? 9999 : idxA
+                    const valB = idxB === -1 ? 9999 : idxB
+                    return valA - valB
+                })
+            }
+
             return newPanes
         })
 
-    }, [chart.layers, data, chart.timeframe]) // Depend on layers and data
+    }, [chart.layers, data, chart.timeframe, chart.paneOrder]) // Depend on paneOrder too
 
     // Fetch Data for All Layers
     useEffect(() => {
@@ -276,7 +288,7 @@ function ChartPanel({ chart, index }) {
         updateLayerSettings(chart.id, seriesId, { priceScaleId: side || 'overlay' })
     }
 
-    // Move Series Logic
+    // Move Series Logic (Legacy: SeriesMenu)
     const handleMoveSeries = (seriesId, direction) => {
         // "direction" from SeriesMenu: 'to_pane_above', 'to_pane_below', 'new_pane_above', 'new_pane_below', 'new'
 
@@ -490,7 +502,10 @@ function ChartPanel({ chart, index }) {
                         onRemoveSeries={handleRemoveSeries}
                         onScaleChange={handleScaleChange}
                         onSymbolSearchClick={() => setIsSearchOpen(true)}
-                        onChartReady={handleChartReady} // NEW
+                        onChartReady={handleChartReady}
+                        onMovePane={(dir) => movePane(chart.id, pane.id, dir)} // -1 (Up), 1 (Down)
+                        canMoveUp={panes.indexOf(pane) > 0}
+                        canMoveDown={panes.indexOf(pane) < panes.length - 1}
                     />
 
                     {idx < panes.length - 1 && (
@@ -529,6 +544,7 @@ function ChartPanel({ chart, index }) {
                     isFirstPane={false}
                     isLastPane={true}
                     onSymbolSearchClick={() => { }}
+                    onMovePane={() => { }}
                 />
             </div>
 

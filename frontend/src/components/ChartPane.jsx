@@ -30,7 +30,10 @@ const ChartPane = forwardRef(({
     onSync,
     onScaleChange,
     onSymbolSearchClick,
-    onChartReady
+    onChartReady,
+    onMovePane,
+    canMoveUp,
+    canMoveDown
 }, ref) => {
     const containerRef = useRef(null)
     const chartRef = useRef(null)
@@ -455,6 +458,27 @@ const ChartPane = forwardRef(({
                                             onScaleChange={() => { }}
                                             onHide={() => hideSeries(config.id)}
                                         />
+                                        {/* Move Pane Controls (only on first series of the pane) */}
+                                        <div className="move-controls" style={{ display: 'inline-flex', gap: '2px', marginLeft: '6px' }}>
+                                            <button
+                                                className="action-btn"
+                                                style={{ opacity: canMoveUp ? 1 : 0.3, cursor: canMoveUp ? 'pointer' : 'default' }}
+                                                disabled={!canMoveUp}
+                                                onClick={() => onMovePane?.(-1)}
+                                                title="Move Pane Up"
+                                            >
+                                                ↑
+                                            </button>
+                                            <button
+                                                className="action-btn"
+                                                style={{ opacity: canMoveDown ? 1 : 0.3, cursor: canMoveDown ? 'pointer' : 'default' }}
+                                                disabled={!canMoveDown}
+                                                onClick={() => onMovePane?.(1)}
+                                                title="Move Pane Down"
+                                            >
+                                                ↓
+                                            </button>
+                                        </div>
                                     </div>
                                     <span className="ohlc-group">
                                         <span className="ohlc-item"><span className="label">O</span><span className="value">{sOhlc.open?.toFixed(2)}</span></span>
@@ -479,6 +503,31 @@ const ChartPane = forwardRef(({
                                         <span className="ind-value">{sOhlc.value?.toFixed(2)}</span>
                                         <div className="action-buttons">
                                             <button className="action-btn" title="Настройки">⚙</button>
+                                            {/* Move Pane Controls (only for first indicator if it's the 0th item) */}
+                                            {/* Note: In separate panes, the first config is the main one. */}
+                                            {/* We use a simple check: is this the first config in seriesConfigs? */}
+                                            {seriesConfigs.indexOf(config) === 0 && (
+                                                <>
+                                                    <button
+                                                        className="action-btn"
+                                                        style={{ opacity: canMoveUp ? 1 : 0.3, cursor: canMoveUp ? 'pointer' : 'default' }}
+                                                        disabled={!canMoveUp}
+                                                        onClick={() => onMovePane?.(-1)}
+                                                        title="Move Pane Up"
+                                                    >
+                                                        ↑
+                                                    </button>
+                                                    <button
+                                                        className="action-btn"
+                                                        style={{ opacity: canMoveDown ? 1 : 0.3, cursor: canMoveDown ? 'pointer' : 'default' }}
+                                                        disabled={!canMoveDown}
+                                                        onClick={() => onMovePane?.(1)}
+                                                        title="Move Pane Down"
+                                                    >
+                                                        ↓
+                                                    </button>
+                                                </>
+                                            )}
                                             <SeriesMenu
                                                 name={config.title || 'Line'}
                                                 color={config.color}

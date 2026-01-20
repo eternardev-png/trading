@@ -24,7 +24,8 @@ const createLayer = (ticker, id) => ({
 const createChart = (id) => ({
     id: id || crypto.randomUUID(),
     layers: [createLayer('BTC/USDT')],
-    timeframe: '1d'
+    timeframe: '1d',
+    paneOrder: [] // IDs of panes in order. e.g. ['pane_main', 'pane_INDICATOR_ID']
 })
 
 export const useLayoutStore = create((set, get) => ({
@@ -225,6 +226,60 @@ export const useLayoutStore = create((set, get) => ({
                 layers[newIdx] = temp
 
                 return { ...chart, layers }
+            })
+        })
+    },
+
+    // Pane Reordering
+    movePane: (chartId, paneId, direction) => {
+        // direction: -1 (Up), 1 (Down)
+        const { charts } = get()
+        set({
+            charts: charts.map(chart => {
+                if (chart.id !== chartId) return chart
+
+                // 1. Get current list of pane IDs
+                // We trust the component to call this with valid IDs,
+                // but we might need to reconstruct the "full" logic if paneOrder is partial.
+                // However, simpler is to rely on existing paneOrder, 
+                // AND append any missing layers if needed (lazy init).
+
+                // Construct default order if empty/partial
+                // Main is always present
+                const layerPanes = chart.layers
+                    .filter(l =>
+                        (l.type === 'indicator' && l.indicatorType === 'pane') ||
+                        (l.type === 'volume' && l.indicatorType === 'pane') ||
+                        (l.type === 'compare' && l.indicatorType === 'pane')
+                    )
+                    .map(l => `pane_${l.id}`)
+
+                const allPaneIds = ['pane_main', ...layerPanes] // Default Order
+
+                let currentOrder = chart.paneOrder && chart.paneOrder.length > 0
+                    ? [...chart.paneOrder]
+                    : allPaneIds
+
+                // Ensure all active panes are in the list (in case of new additions)
+                allPaneIds.forEach(pid => {
+                    if (!currentOrder.includes(pid)) {
+                        currentOrder.push(pid)
+                    }
+                })
+                // Clean up stale IDs? Optional.
+
+                const idx = currentOrder.indexOf(paneId)
+                if (idx === -1) return chart // Not found
+
+                const newIdx = idx + direction
+                if (newIdx < 0 || newIdx >= currentOrder.length) return chart // Bounds check
+
+                // Swap
+                const temp = currentOrder[idx]
+                currentOrder[idx] = currentOrder[newIdx]
+                currentOrder[newIdx] = temp
+
+                return { ...chart, paneOrder: currentOrder }
             })
         })
     }
