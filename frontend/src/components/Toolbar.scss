@@ -163,6 +163,74 @@
         }
     }
 
+    // Timeframe Dropdown Menu
+    &__timeframe-selector {
+        position: relative;
+    }
+
+    &__timeframe-btn {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 5px 10px;
+        font-size: 13px;
+        font-weight: 500;
+        color: var(--text-primary);
+        background: transparent;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: all 0.1s;
+
+        &:hover {
+            background: var(--bg-tertiary);
+        }
+
+        .dropdown-arrow {
+            font-size: 10px;
+            color: var(--text-secondary);
+        }
+    }
+
+    &__timeframe-menu {
+        position: absolute;
+        top: calc(100% + 4px);
+        left: 0;
+        min-width: 120px;
+        padding: 4px;
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        z-index: 1000;
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 2px;
+
+        .timeframe-menu-item {
+            padding: 6px 10px;
+            font-size: 12px;
+            color: var(--text-secondary);
+            background: transparent;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.1s;
+            white-space: nowrap;
+
+            &:hover {
+                background: var(--bg-tertiary);
+                color: var(--text-primary);
+            }
+
+            &.active {
+                background: var(--accent-blue);
+                color: white;
+            }
+        }
+    }
+
     &__layout-wrapper {
         position: relative;
     }

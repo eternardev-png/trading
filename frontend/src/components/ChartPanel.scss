@@ -426,4 +426,57 @@
             background: rgba(41, 98, 255, 0.15);
         }
     }
+
+    // Chart Controls - Top Right
+    .chart-controls {
+        position: absolute;
+        top: 8px;
+        right: 8px;
+        z-index: 100;
+        display: flex;
+        gap: 4px;
+        background: rgba(19, 23, 34, 0.8);
+        backdrop-filter: blur(4px);
+        padding: 4px;
+        border-radius: 6px;
+        border: 1px solid #2a2e39;
+    }
+
+    .chart-control-btn {
+        width: 32px;
+        height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: transparent;
+        border: none;
+        border-radius: 4px;
+        color: #787b86;
+        cursor: pointer;
+        transition: all 0.2s;
+        font-size: 16px;
+
+        &:hover {
+            background: #2a2e39;
+            color: #d1d4dc;
+        }
+
+        &.active {
+            background: #2962ff;
+            color: white;
+
+            &:hover {
+                background: #1e53e5;
+            }
+        }
+
+        &.inactive {
+            opacity: 0.4;
+        }
+
+        svg {
+            width: 20px;
+            height: 20px;
+        }
+    }
 }

@@ -61,6 +61,84 @@ export const useLayoutStore = create((set, get) => ({
     showRightPanel: false,
     toggleRightPanel: () => set(state => ({ showRightPanel: !state.showRightPanel })),
 
+    // --- TIMEFRAME STATE ---
+    globalTimeframe: '1d',
+    setGlobalTimeframe: (tf) => set({ globalTimeframe: tf }),
+
+    // --- CHART CONTROLS STATE ---
+    magnetMode: false, // Magnet disabled by default
+    setMagnetMode: (enabled) => set({ magnetMode: enabled }),
+    drawingsVisible: true,
+    setDrawingsVisible: (visible) => set({ drawingsVisible: visible }),
+
+    // --- STRATEGY STATE ---
+    strategies: [],
+    activeStrategy: null,
+    strategySignals: [], // Buy/sell signals for chart markers
+    strategyEquity: [], // Equity curve data
+
+    addStrategy: (strategy) => set((state) => ({
+        strategies: [...state.strategies, strategy],
+        activeStrategy: strategy.id
+    })),
+
+    updateStrategy: (id, updates) => set((state) => ({
+        strategies: state.strategies.map(s => s.id === id ? { ...s, ...updates } : s)
+    })),
+
+    removeStrategy: (id) => set((state) => ({
+        strategies: state.strategies.filter(s => s.id !== id),
+        activeStrategy: state.activeStrategy === id ? null : state.activeStrategy
+    })),
+
+    setActiveStrategy: (id) => set({ activeStrategy: id }),
+
+    setStrategyResults: (signals, equity) => set({
+        strategySignals: signals || [],
+        strategyEquity: equity || []
+    }),
+
+    // --- DRAWINGS STATE ---
+    drawings: {}, // { paneId: [ { id, type, p1, p2, p3, ... }, ... ] }
+    activeTool: 'cursor', // Current drawing tool
+    selectedDrawingId: null,
+    setSelectedDrawingId: (id) => set({ selectedDrawingId: id }),
+
+    setActiveTool: (tool) => set({ activeTool: tool }),
+
+    addDrawing: (paneId, drawing) => set((state) => {
+        const newDrawing = { ...drawing, id: drawing.id || `drawing_${Date.now()}` }
+        const paneDrawings = state.drawings[paneId] || []
+        return {
+            drawings: {
+                ...state.drawings,
+                [paneId]: [...paneDrawings, newDrawing]
+            }
+        }
+    }),
+
+    updateDrawing: (paneId, id, updates) => set((state) => {
+        const paneDrawings = state.drawings[paneId] || []
+        return {
+            drawings: {
+                ...state.drawings,
+                [paneId]: paneDrawings.map(d => d.id === id ? { ...d, ...updates } : d)
+            }
+        }
+    }),
+
+    removeDrawing: (paneId, id) => set((state) => {
+        const paneDrawings = state.drawings[paneId] || []
+        return {
+            drawings: {
+                ...state.drawings,
+                [paneId]: paneDrawings.filter(d => d.id !== id)
+            }
+        }
+    }),
+
+    clearAllDrawings: () => set({ drawings: {} }),
+
     // --- ACTIONS ---
 
     setPanes: (panes) => set({ panes }),
@@ -303,7 +381,10 @@ export const useLayoutStore = create((set, get) => ({
                 d.id === drawingId ? { ...d, ...newProps } : d
             ) || []
         }
-    }))
+    })),
+
+    // Очистить все рисунки со всех панелей
+    clearAllDrawings: () => set({ drawings: {} })
 }))
 
 export const LAYOUTS = {

@@ -1,0 +1,30 @@
+.strategy-markers {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    pointer-events: none;
+    z-index: 10;
+}
+
+.strategy-marker {
+    position: absolute;
+    font-size: 16px;
+    font-weight: bold;
+    pointer-events: auto;
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+
+.strategy-marker:hover {
+    transform: scale(1.3);
+}
+
+.strategy-marker--buy {
+    color: #26a69a;
+}
+
+.strategy-marker--sell {
+    color: #ef5350;
+}

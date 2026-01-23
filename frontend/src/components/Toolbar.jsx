@@ -1,10 +1,11 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useLayoutStore, LAYOUTS } from '../stores/useLayoutStore'
 import SymbolSearch from './SymbolSearch'
 import IndicatorsMenu from './IndicatorsMenu'
+import StrategyBuilder from './StrategyBuilder'
 import './Toolbar.scss'
 
-const TIMEFRAMES = ['15m', '1h', '4h', '1d', '1w']
+const TIMEFRAMES = ['5m', '10m', '15m', '30m', '45m', '1h', '2h', '3h', '4h', '1d', '1w', '1M', '3M', '6M', '12M']
 
 const LAYOUT_ICONS = {
     [LAYOUTS.SINGLE]: '▢',
@@ -22,13 +23,17 @@ function Toolbar() {
         setChartTimeframe, // This might be no-op now
         updateSeriesSettings,
         addIndicator,
-        addCompareLayer
+        addCompareLayer,
+        activeStrategy,
+        strategies
     } = useLayoutStore()
 
     const [showLayoutMenu, setShowLayoutMenu] = useState(false)
     const [isSearchOpen, setIsSearchOpen] = useState(false)
     const [searchMode, setSearchMode] = useState('set-main') // 'set-main' | 'compare'
     const [showIndicators, setShowIndicators] = useState(false)
+    const [showStrategyBuilder, setShowStrategyBuilder] = useState(false)
+    const [showTimeframeMenu, setShowTimeframeMenu] = useState(false)
     const [activeTimeframe, setActiveTimeframe] = useState('1d')
 
     // Main Series Logic
@@ -63,9 +68,37 @@ function Toolbar() {
 
     const handleTimeframeChange = (tf) => {
         setActiveTimeframe(tf)
-        // Global timeframe? Store assumes components handle it or we set it globally.
-        // setChartTimeframe(tf) // Not fully implemented in new store but kept as stub
+        setShowTimeframeMenu(false) // Close menu after selection
+
+        // Update global timeframe in store
+        const { setGlobalTimeframe, panes, updateSeriesSettings } = useLayoutStore.getState()
+        setGlobalTimeframe(tf)
+
+        // Update all main series to trigger data refetch
+        const mainPane = panes.find(p => p.id === 'main-pane') || panes[0]
+        if (mainPane) {
+            mainPane.series.forEach(s => {
+                if (s.isMain || s.chartType === 'volume' || s.priceScale === 'volume_scale') {
+                    // Update timeframe which will trigger refetch in ChartPanel
+                    updateSeriesSettings(s.id, { timeframe: tf })
+                }
+            })
+        }
     }
+
+    // Close timeframe menu when clicking outside
+    useEffect(() => {
+        if (!showTimeframeMenu) return
+
+        const handleClickOutside = (e) => {
+            if (!e.target.closest('.toolbar__timeframe-selector')) {
+                setShowTimeframeMenu(false)
+            }
+        }
+
+        document.addEventListener('click', handleClickOutside)
+        return () => document.removeEventListener('click', handleClickOutside)
+    }, [showTimeframeMenu])
 
     return (
         <div className="toolbar">
@@ -113,19 +146,43 @@ function Toolbar() {
                     <span>Индикаторы</span>
                 </button>
 
+                {/* Strategy Button */}
+                <button
+                    className={`toolbar__btn-text ${activeStrategy ? 'active' : ''}`}
+                    onClick={() => setShowStrategyBuilder(true)}
+                    title="Создать стратегию"
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 28 28" width="28" height="28" fill="none">
+                        <path stroke="currentColor" strokeWidth="1.2" d="M4 14h6l3-8 4 16 3-8h4" />
+                    </svg>
+                    <span>{activeStrategy ? strategies.find(s => s.id === activeStrategy)?.name || 'Стратегия' : 'Стратегия'}</span>
+                </button>
+
                 <div className="toolbar__separator"></div>
 
-                {/* Timeframe Selector */}
-                <div className="toolbar__timeframes">
-                    {TIMEFRAMES.map(tf => (
-                        <button
-                            key={tf}
-                            className={`toolbar__tf-btn ${activeTimeframe === tf ? 'active' : ''}`}
-                            onClick={() => handleTimeframeChange(tf)}
-                        >
-                            {tf}
-                        </button>
-                    ))}
+                {/* Timeframe Selector - Dropdown Style */}
+                <div className="toolbar__timeframe-selector">
+                    <button
+                        className="toolbar__timeframe-btn"
+                        onClick={() => setShowTimeframeMenu(!showTimeframeMenu)}
+                    >
+                        {activeTimeframe}
+                        <span className="dropdown-arrow">▼</span>
+                    </button>
+
+                    {showTimeframeMenu && (
+                        <div className="toolbar__timeframe-menu">
+                            {TIMEFRAMES.map(tf => (
+                                <button
+                                    key={tf}
+                                    className={`timeframe-menu-item ${activeTimeframe === tf ? 'active' : ''}`}
+                                    onClick={() => handleTimeframeChange(tf)}
+                                >
+                                    {tf}
+                                </button>
+                            ))}
+                        </div>
+                    )}
                 </div>
             </div>
 
@@ -202,6 +259,11 @@ function Toolbar() {
                 isOpen={showIndicators}
                 onClose={() => setShowIndicators(false)}
                 onSelect={handleIndicatorSelect}
+            />
+
+            <StrategyBuilder
+                isOpen={showStrategyBuilder}
+                onClose={() => setShowStrategyBuilder(false)}
             />
         </div>
     )

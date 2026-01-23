@@ -39,7 +39,13 @@ const Icons = {
 
     // Measure
     measure: <svg width="28" height="28" viewBox="0 0 28 28" fill="none"><path d="M4 8V20M24 8V20M4 14H24M8 14V11M12 14V11M16 14V11M20 14V11" stroke="currentColor" strokeWidth="1.5" /></svg>,
-    delete: <svg width="28" height="28" viewBox="0 0 28 28" fill="none"><path d="M8 8L20 20M20 8L8 20" stroke="currentColor" strokeWidth="1.5" /></svg>
+    delete: <svg width="28" height="28" viewBox="0 0 28 28" fill="none"><path d="M8 8L20 20M20 8L8 20" stroke="currentColor" strokeWidth="1.5" /></svg>,
+
+    // Chart Controls
+    magnet: <svg width="28" height="28" viewBox="0 0 28 28" fill="none"><path d="M10 4H8C6 4 4 6 4 8V12H8V8H10V12H14V8H16V12H20V8C20 6 18 4 16 4H14M4 16V20C4 22 6 24 8 24H10V20H8V16H4M14 20V24H16C18 24 20 22 20 20V16H16V20H14" stroke="currentColor" strokeWidth="1.5" fill="currentColor" fillOpacity="0.2" /></svg>,
+    eye: <svg width="28" height="28" viewBox="0 0 28 28" fill="none"><path d="M14 8C8 8 4 14 4 14S8 20 14 20S24 14 24 14S20 8 14 8Z" stroke="currentColor" strokeWidth="1.5" /><circle cx="14" cy="14" r="3" stroke="currentColor" strokeWidth="1.5" /></svg>,
+    eyeOff: <svg width="28" height="28" viewBox="0 0 28 28" fill="none"><path d="M6 6L22 22M10 10C9 11 8.5 12 8.5 14C8.5 17 11 19.5 14 19.5C16 19.5 17 19 18 18" stroke="currentColor" strokeWidth="1.5" /></svg>,
+    eraser: <svg width="28" height="28" viewBox="0 0 28 28" fill="none"><path d="M19 19L9 9M7 17L17 7C17.5 6.5 18.5 6.5 19 7L21 9C21.5 9.5 21.5 10.5 21 11L11 21C10.5 21.5 9.5 21.5 9 21L7 19C6.5 18.5 6.5 17.5 7 17Z" stroke="currentColor" strokeWidth="1.5" /><path d="M5 23H23" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg>
 }
 
 // Tool Definition Structure
@@ -106,11 +112,37 @@ const TOOL_GROUPS = [
         tools: [
             { id: 'measure', icon: Icons.measure, title: 'Линейка' },
         ]
+    },
+    {
+        id: 'eraser_group',
+        tools: [
+            { id: 'eraser', icon: Icons.eraser, title: 'Ластик' },
+        ]
+    },
+    {
+        id: 'magnet_group',
+        tools: [
+            { id: 'magnet', icon: Icons.magnet, title: 'Магнит', isControl: true },
+        ]
+    },
+    {
+        id: 'hide_drawings_group',
+        tools: [
+            { id: 'hide-drawings', icon: Icons.eye, iconOff: Icons.eyeOff, title: 'Скрыть рисунки', isControl: true },
+        ]
     }
 ]
 
 function LeftSidebar() {
-    const { activeTool, setActiveTool } = useLayoutStore()
+    const {
+        activeTool,
+        setActiveTool,
+        clearAllDrawings,
+        magnetMode,
+        setMagnetMode,
+        drawingsVisible,
+        setDrawingsVisible
+    } = useLayoutStore()
 
     // State to track the "Active" (last used) tool for each group
     const [groupState, setGroupState] = useState({})
@@ -130,6 +162,17 @@ function LeftSidebar() {
     }, [])
 
     const handleToolClick = (group, tool) => {
+        // Handle control buttons differently
+        if (tool.isControl) {
+            if (tool.id === 'magnet') {
+                setMagnetMode(!magnetMode)
+            } else if (tool.id === 'hide-drawings') {
+                setDrawingsVisible(!drawingsVisible)
+            }
+            setOpenGroup(null)
+            return
+        }
+
         setActiveTool(tool.id)
         setGroupState(prev => ({ ...prev, [group.id]: tool }))
         setOpenGroup(null) // Close menu
@@ -144,7 +187,17 @@ function LeftSidebar() {
             {TOOL_GROUPS.map(group => {
                 // Determine current tool to show icon for
                 const currentTool = groupState[group.id] || group.tools[0]
-                const isActive = group.tools.some(t => t.id === activeTool)
+
+                // For control groups, check toggle states
+                let isActive = false
+                if (group.id === 'magnet_group') {
+                    isActive = magnetMode // Active when magnet is ON
+                } else if (group.id === 'hide_drawings_group') {
+                    isActive = drawingsVisible // Active when drawings are VISIBLE
+                } else {
+                    isActive = group.tools.some(t => t.id === activeTool)
+                }
+
                 const hasSubmenu = group.tools.length > 1
 
                 return (
@@ -156,7 +209,10 @@ function LeftSidebar() {
                                 title={currentTool.title}
                                 onClick={() => handleToolClick(group, currentTool)}
                             >
-                                {currentTool.icon}
+                                {/* Show iconOff for hide-drawings when drawings are hidden */}
+                                {group.id === 'hide_drawings_group' && !drawingsVisible && currentTool.iconOff
+                                    ? currentTool.iconOff
+                                    : currentTool.icon}
                             </button>
 
                             {/* Arrow Button (Opens Menu) */}

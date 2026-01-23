@@ -40,9 +40,14 @@ const ChartPane = forwardRef(({
     const chartRef = useRef(null)
     const seriesMap = useRef({})
     const isFirstLoad = useRef(true)
+    const strategySignals = useLayoutStore(state => state.strategySignals)
+    const magnetMode = useLayoutStore(state => state.magnetMode)
+    const drawingsVisible = useLayoutStore(state => state.drawingsVisible)
 
     const [ohlc, setOhlc] = useState({})
     const [seriesVisible, setSeriesVisible] = useState({})
+    const [showTimeframeMenu, setShowTimeframeMenu] = useState(false)
+    const [showSettings, setShowSettings] = useState(false)
 
     // Initialize visibility state based on configs
     useEffect(() => {
@@ -113,6 +118,19 @@ const ChartPane = forwardRef(({
                 vertAlign: 'center',
                 color: 'rgba(255, 255, 255, 0.03)',
                 text: mainInfo?.ticker || '',
+            },
+            crosshair: {
+                mode: 0, // Normal crosshair mode (0 = Normal, 1 = Magnet)
+                vertLine: {
+                    width: 1,
+                    color: 'rgba(120, 123, 134, 0.6)',
+                    labelVisible: true,
+                },
+                horzLine: {
+                    width: 1,
+                    color: 'rgba(120, 123, 134, 0.6)',
+                    labelVisible: true,
+                },
             },
             handleScale: {
                 axisPressedMouseMove: true,
@@ -460,6 +478,59 @@ const ChartPane = forwardRef(({
 
     }, [data, seriesConfigs, seriesVisible])
 
+    // Apply strategy markers when signals change
+    useEffect(() => {
+        if (!chartRef.current || id !== 'main-pane') return
+        // strategySignals is now a direct dependency, so it's available here
+        if (!strategySignals || strategySignals.length === 0) {
+            // Clear markers if no signals
+            const mainConfig = seriesConfigs.find(c => c.chartType === 'candle' && c.isMain)
+            if (mainConfig) {
+                const mainSeries = seriesMap.current[mainConfig.id]
+                if (mainSeries) {
+                    mainSeries.setMarkers([])
+                }
+            }
+            return
+        }
+
+        // Check if Strategy indicator is visible
+        const strategyConfig = seriesConfigs.find(c => c.id === 'strategy-signals')
+        const isStrategyVisible = seriesVisible['strategy-signals'] !== false
+
+        // Find main candlestick series
+        const mainConfig = seriesConfigs.find(c => c.chartType === 'candle' && c.isMain)
+        if (!mainConfig) return
+
+        const mainSeries = seriesMap.current[mainConfig.id]
+        if (!mainSeries) return
+
+        // Apply or clear markers based on visibility
+        if (isStrategyVisible && strategyConfig) {
+            const markers = strategySignals.map(signal => ({
+                time: signal.time,
+                position: signal.type === 'buy' ? 'belowBar' : 'aboveBar',
+                color: signal.type === 'buy' ? '#26a69a' : '#ef5350',
+                shape: signal.type === 'buy' ? 'arrowUp' : 'arrowDown',
+                text: signal.type === 'buy' ? 'B' : 'S'
+            }))
+            mainSeries.setMarkers(markers)
+        } else {
+            mainSeries.setMarkers([])
+        }
+    }, [id, seriesConfigs, strategySignals, seriesVisible])
+
+    // Update crosshair mode when magnetMode changes
+    useEffect(() => {
+        if (!chartRef.current) return
+
+        chartRef.current.applyOptions({
+            crosshair: {
+                mode: magnetMode ? 1 : 0, // 1 = Magnet, 0 = Normal
+            }
+        })
+    }, [magnetMode])
+
     // Scale Controls Handlers
     const toggleAuto = (scaleId) => {
         if (!chartRef.current) return
@@ -621,7 +692,37 @@ const ChartPane = forwardRef(({
                                             <span className="ticker-text">{mainInfo?.ticker}</span>
                                         </button>
                                         <div className="info-separator"></div>
-                                        <span className="timeframe">{mainInfo?.timeframe}</span>
+                                        <div className="timeframe-selector">
+                                            <button
+                                                className="timeframe-btn"
+                                                onClick={() => setShowTimeframeMenu(!showTimeframeMenu)}
+                                            >
+                                                {mainInfo?.timeframe || '1d'}
+                                            </button>
+                                            {showTimeframeMenu && (
+                                                <div className="timeframe-dropdown">
+                                                    {['5m', '10m', '15m', '30m', '45m', '1h', '2h', '3h', '4h', '1d', '1w', '1M', '3M', '6M', '12M'].map(tf => (
+                                                        <button
+                                                            key={tf}
+                                                            className={`tf-item ${mainInfo?.timeframe === tf ? 'active' : ''}`}
+                                                            onClick={() => {
+                                                                const { setGlobalTimeframe, updateSeriesSettings } = useLayoutStore.getState()
+                                                                setGlobalTimeframe(tf)
+                                                                // Update main series
+                                                                seriesConfigs.forEach(s => {
+                                                                    if (s.isMain || s.chartType === 'volume') {
+                                                                        updateSeriesSettings(s.id, { timeframe: tf })
+                                                                    }
+                                                                })
+                                                                setShowTimeframeMenu(false)
+                                                            }}
+                                                        >
+                                                            {tf}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
                                         <span className="exchange">{mainInfo?.exchange || 'CRYPTO'}</span>
                                         <SeriesMenu
                                             name={mainInfo?.ticker}
@@ -718,6 +819,20 @@ const ChartPane = forwardRef(({
             )}
 
             <div ref={containerRef} className="chart-panel__chart" style={{ width: '100%', height: '100%' }} />
+
+            {/* Chart Controls - Top Right (Settings Only) */}
+            {!isTimeline && (
+                <div className="chart-controls">
+                    <button
+                        className="chart-control-btn"
+                        onClick={() => setShowSettings(true)}
+                        title="Настройки графика"
+                    >
+                        ⚙️
+                    </button>
+                </div>
+            )}
+
             {mainInfo && (
                 <div className="chart-pane__watermark" style={{ ...watermarkStyle, display: isTimeline ? 'none' : 'flex' }}>
                     {mainInfo.ticker}
@@ -732,6 +847,8 @@ const ChartPane = forwardRef(({
                     width={containerRef.current?.clientWidth}
                     height={containerRef.current?.clientHeight}
                     paneId={id}
+                    magnetMode={magnetMode}
+                    drawingsVisible={drawingsVisible}
                 />
             )}
         </div>
