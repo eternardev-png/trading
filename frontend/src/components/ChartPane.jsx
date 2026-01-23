@@ -65,6 +65,21 @@ const ChartPane = forwardRef(({
         }
     }, [seriesConfigs, isTimeline])
 
+    // Close timeframe menu when clicking outside
+    useEffect(() => {
+        if (!showTimeframeMenu) return
+
+        const handleClickOutside = (e) => {
+            if (!e.target.closest('.timeframe-selector')) {
+                setShowTimeframeMenu(false)
+            }
+        }
+
+        document.addEventListener('mousedown', handleClickOutside)
+        return () => document.removeEventListener('mousedown', handleClickOutside)
+    }, [showTimeframeMenu])
+
+
     // Scale modes state
     const [scaleModes, setScaleModes] = useState({
         left: { autoScale: true, log: false },
@@ -731,28 +746,33 @@ const ChartPane = forwardRef(({
                     }))
                 }
 
-                // Simple zoom: adjust scale margins
+                // Умный зум: нелинейное масштабирование для большего диапазона
                 const currentMargins = opts.scaleMargins || { top: 0.1, bottom: 0.1 }
 
-                // Zoom delta
-                const zoomDelta = e.deltaY > 0 ? 0.02 : -0.02
+                // Текущий зум-уровень (0 = максимальный зум, 0.98 = максимальное отдаление)
+                const currentSum = currentMargins.top + currentMargins.bottom
 
-                let newTop = currentMargins.top + zoomDelta
-                let newBottom = currentMargins.bottom + zoomDelta
+                // Направление зума
+                const isZoomIn = e.deltaY < 0
 
-                // API требует: 0 <= margin <= 1 и top + bottom < 1
-                // Clamp each margin to [0, 1]
-                newTop = Math.max(0, Math.min(1, newTop))
-                newBottom = Math.max(0, Math.min(1, newBottom))
-
-                // Ensure sum < 1
-                const sum = newTop + newBottom
-                if (sum >= 1) {
-                    // Scale down proportionally
-                    const scale = 0.98 / sum
-                    newTop *= scale
-                    newBottom *= scale
+                // Нелинейная функция зума - быстрее в середине, медленнее на краях
+                let delta
+                if (isZoomIn) {
+                    // Приближение: чем ближе к 0, тем медленнее
+                    delta = -0.02 * (1 + currentSum * 2)
+                } else {
+                    // Отдаление: чем ближе к 1, тем медленнее
+                    delta = 0.02 * (2 - currentSum)
                 }
+
+                let newSum = currentSum + delta
+
+                // Строгие ограничения API
+                newSum = Math.max(0.01, Math.min(0.98, newSum))
+
+                // Распределяем поровну между top и bottom
+                const newTop = newSum / 2
+                const newBottom = newSum / 2
 
                 scale.applyOptions({
                     scaleMargins: {
@@ -760,6 +780,7 @@ const ChartPane = forwardRef(({
                         bottom: newBottom,
                     },
                 })
+
 
 
 
@@ -956,7 +977,7 @@ const ChartPane = forwardRef(({
                                                 onClick={() => onMovePane?.(1)}
                                                 title="Move Pane Down"
                                             >
-                                                в†“
+                                                ▼
                                             </button>
                                         </div>
                                     </div>
@@ -1071,3 +1092,5 @@ const watermarkStyle = {
 }
 
 export default memo(ChartPane)
+
+
