@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useImperativeHandle, forwardRef, memo, useMemo } from 'react'
+﻿import { useEffect, useRef, useState, useImperativeHandle, forwardRef, memo, useMemo } from 'react'
 import { createChart, ColorType } from 'lightweight-charts'
 import { useLayoutStore } from '../stores/useLayoutStore'
 import SeriesMenu from './SeriesMenu'
@@ -37,6 +37,7 @@ const ChartPane = forwardRef(({
     timeScaleVisible = true // Default to true
 }, ref) => {
     const containerRef = useRef(null)
+    const paneRef = useRef(null)
     const chartRef = useRef(null)
     const seriesMap = useRef({})
     const isFirstLoad = useRef(true)
@@ -92,13 +93,14 @@ const ChartPane = forwardRef(({
                 borderVisible: false,
                 scaleMargins: { top: 0.05, bottom: 0.12 },
                 autoScale: true,
-                mode: 1, // Normal
+                mode: 0, // Normal (0)
             },
             leftPriceScale: {
                 visible: !isTimeline,
                 borderVisible: false,
                 scaleMargins: { top: 0.05, bottom: 0.12 },
                 autoScale: true,
+                mode: 0, // Normal (0)
             },
             timeScale: {
                 visible: timeScaleVisible,
@@ -134,15 +136,15 @@ const ChartPane = forwardRef(({
             },
             handleScale: {
                 axisPressedMouseMove: true,
-                mouseWheel: true,
-                pinch: false, // Disable pinch to prevent accidental zoom on trackpad/swipes
+                mouseWheel: false, // Disabled - we handle zoom manually
+                pinch: false,
             },
             kineticScroll: {
                 touch: true,
                 mouse: true,
             },
             handleScroll: {
-                mouseWheel: true,
+                mouseWheel: false, // Disable Scrolling (Zoom instead)
                 pressedMouseMove: true,
                 horzTouchDrag: true,
                 vertTouchDrag: true,
@@ -153,8 +155,9 @@ const ChartPane = forwardRef(({
 
         // Force enforce options just in case
         lwChart.timeScale().applyOptions({
+            // ... (keep existing)
             fixLeftEdge: false,
-            fixRightEdge: false,
+            fixRightEdge: false, // Allow scrolling into future
             shiftVisibleRangeOnNewBar: false,
         })
 
@@ -170,7 +173,46 @@ const ChartPane = forwardRef(({
             onChartReady(lwChart)
         }
 
-        // Crosshair handler
+        // Helper to sync React state with Chart internal state
+        const syncScaleModes = () => {
+            if (!chartRef.current) return
+
+            // We use generic functional update to avoid closure staleness
+            setScaleModes(prev => {
+                const newModes = { ...prev }
+                let changed = false
+                const scales = ['right', 'left']
+
+                scales.forEach(sid => {
+                    try {
+                        const s = lwChart.priceScale(sid)
+                        if (s) {
+                            const o = s.options()
+                            // Extra safety check for returns
+                            if (!o) return
+
+                            const current = newModes[sid] || { autoScale: true, log: false }
+
+                            if (current.autoScale !== o.autoScale || current.log !== (o.mode === 1)) {
+                                newModes[sid] = {
+                                    autoScale: o.autoScale,
+                                    log: o.mode === 1
+                                }
+                                changed = true
+                            }
+                        }
+                    } catch (e) {
+                        // Ignore LWC internal errors e.g. "Value is null" during init
+                    }
+                })
+                return changed ? newModes : prev
+            })
+        }
+
+        // 1. Initial Sync
+        syncScaleModes()
+
+        // 2. Crosshair handler (Keep existing)
         lwChart.subscribeCrosshairMove(param => {
             if (param.time) {
                 const newOhlc = {}
@@ -199,13 +241,40 @@ const ChartPane = forwardRef(({
             }
         })
 
+        // 3. LISTEN TO INTERACTIONS to Sync AutoScale
+        // LWC disables autoScale on user scroll/zoom. We need to catch this.
+        // No direct event. We hook into TIME RANGE changes (often happen with scroll)
+        // AND add DOM listeners to container for mouseup/wheel (capture phase).
+
+        lwChart.timeScale().subscribeVisibleTimeRangeChange(() => {
+            syncScaleModes()
+        })
+
+        const container = containerRef.current
+        const handleInteraction = () => {
+            // Small timeout to let LWC update internal state
+            setTimeout(syncScaleModes, 50)
+        }
+
+        container.addEventListener('mouseup', handleInteraction)
+        container.addEventListener('wheel', handleInteraction)
+        container.addEventListener('mouseleave', handleInteraction) // safety
+
         return () => {
+            container.removeEventListener('mouseup', handleInteraction)
+            container.removeEventListener('wheel', handleInteraction)
+            container.removeEventListener('mouseleave', handleInteraction)
+
             resizeObserver.disconnect()
             lwChart.remove()
             chartRef.current = null
             seriesMap.current = {}
         }
-    }, [isTimeline, isFirstPane, timeScaleVisible])
+    }, [isTimeline, isFirstPane, timeScaleVisible]) // Dependency on scaleModes? No, we read current inside sync function? 
+    // Wait, syncScaleModes closes over 'scaleModes' state variable if defined inside useEffect?
+    // YES. We need to use functional update setScaleModes logic inside syncScaleModes or ref.
+    // FIX: Define syncScaleModes to NOT depend on 'scaleModes' closure.
+    // See revised logic below.
 
     // Update TimeScale visibility if prop changes
     useEffect(() => {
@@ -329,7 +398,24 @@ const ChartPane = forwardRef(({
             // Note: setData() resets the time scale by default. We counter this by restoring prevRange below.
             if (seriesData && seriesData.length > 0) {
                 if (config.chartType === 'candle') {
-                    series.setData(seriesData)
+                    // VALIDATION TO PREVENT CRASH
+                    const validData = seriesData.filter(d => {
+                        if (!d || !d.time) return false
+                        // Ensure we don't pass broken objects that confuse LWC date parser
+                        // If time is object, it must have year, month, day.
+                        if (typeof d.time === 'object') {
+                            return d.time.year !== undefined && d.time.month !== undefined && d.time.day !== undefined
+                        }
+                        return true
+                    }).map(d => ({
+                        time: d.time,
+                        open: Number(d.open),
+                        high: Number(d.high),
+                        low: Number(d.low),
+                        close: Number(d.close)
+                    }))
+
+                    series.setData(validData)
                     // ... (Marker logic omitted for brevity but can be restored)
                     const last = seriesData[seriesData.length - 1]
                     if (last && config.isMain) {
@@ -551,6 +637,7 @@ const ChartPane = forwardRef(({
         if (!chartRef.current) return
         const scale = chartRef.current.priceScale(scaleId)
         const opts = scale.options()
+        // 0 = Normal, 1 = Log
         const newMode = opts.mode === 1 ? 0 : 1
         scale.applyOptions({ mode: newMode })
 
@@ -568,28 +655,140 @@ const ChartPane = forwardRef(({
     // list logic is 461-463.
     // I will do 2 chunks or 1 big chunk? They are separated by handleMouseMove.
     // I will do 2 chunks.
-
     // CHUNK 1: Toggles
 
 
     const handleMouseMove = (e) => {
-        if (!containerRef.current) return
-        const rect = containerRef.current.getBoundingClientRect()
+        if (!paneRef.current || !chartRef.current) return
+        const rect = paneRef.current.getBoundingClientRect()
         const x = e.clientX - rect.left
-        const y = e.clientY - rect.top
         const width = rect.width
-        const height = rect.height
-        const scaleWidth = 80
-        const bottomAreaHeight = 100
 
-        if (y > height - bottomAreaHeight) {
-            if (x > width - scaleWidth) setHoveredScale('right')
-            else if (x < scaleWidth) setHoveredScale('left')
-            else setHoveredScale(null)
-        } else {
-            setHoveredScale(null)
-        }
+        let scaleWidth = 80
+        try {
+            const timeWidth = chartRef.current.timeScale().width()
+            const calc = width - timeWidth
+            if (calc > 0) scaleWidth = calc
+        } catch (err) { }
+
+        const hitBuffer = 5
+
+        if (x > width - (scaleWidth + hitBuffer)) setHoveredScale('right')
+        else if (x < (50 + hitBuffer)) setHoveredScale('left')
+        else setHoveredScale(null)
     }
+
+    // Ref to track hovered scale for event listener access
+    const hoveredScaleRef = useRef(null)
+    useEffect(() => { hoveredScaleRef.current = hoveredScale }, [hoveredScale])
+
+    // UNIFIED WHEEL HANDLER
+    useEffect(() => {
+        const container = paneRef.current
+        if (!container || !chartRef.current) return
+
+        const onWheel = (e) => {
+            const rect = container.getBoundingClientRect()
+            const x = e.clientX - rect.left
+            const width = rect.width
+
+            // Correct Hit Testing using PriceScale width
+            let rightScaleWidth = 0
+            let leftScaleWidth = 0
+            try {
+                // Get Left/Right prices scale widths directly
+                const r = chartRef.current.priceScale('right')
+                if (r) rightScaleWidth = r.width()
+
+                const l = chartRef.current.priceScale('left')
+                if (l) leftScaleWidth = l.width()
+            } catch (e) { }
+
+            // Fallback / Widen
+            if (!rightScaleWidth || rightScaleWidth < 50) rightScaleWidth = 100
+            const hitBuffer = 20
+
+            let targetScale = null
+            // Check Right
+            if (x > width - (rightScaleWidth + hitBuffer)) targetScale = 'right'
+            // Check Left
+            else if (x < (leftScaleWidth + hitBuffer)) targetScale = 'left'
+
+            // --- 1. PRICE SCALE ZOOM (Vertical) ---
+            if (targetScale) {
+                e.preventDefault()
+                e.stopPropagation()
+
+                const scale = chartRef.current.priceScale(targetScale)
+
+                // Disable AutoScale when manually zooming
+                const opts = scale.options()
+                if (opts.autoScale) {
+                    scale.applyOptions({ autoScale: false })
+                    setScaleModes(prev => ({
+                        ...prev,
+                        [targetScale]: { ...prev[targetScale], autoScale: false }
+                    }))
+                }
+
+                // Simple zoom: adjust scale margins
+                const currentMargins = opts.scaleMargins || { top: 0.1, bottom: 0.1 }
+
+                // Zoom delta
+                const zoomDelta = e.deltaY > 0 ? 0.02 : -0.02
+
+                let newTop = currentMargins.top + zoomDelta
+                let newBottom = currentMargins.bottom + zoomDelta
+
+                // API требует: 0 <= margin <= 1 и top + bottom < 1
+                // Clamp each margin to [0, 1]
+                newTop = Math.max(0, Math.min(1, newTop))
+                newBottom = Math.max(0, Math.min(1, newBottom))
+
+                // Ensure sum < 1
+                const sum = newTop + newBottom
+                if (sum >= 1) {
+                    // Scale down proportionally
+                    const scale = 0.98 / sum
+                    newTop *= scale
+                    newBottom *= scale
+                }
+
+                scale.applyOptions({
+                    scaleMargins: {
+                        top: newTop,
+                        bottom: newBottom,
+                    },
+                })
+
+
+
+
+                // --- 2. TIME SCALE ZOOM (Chart Area) ---
+            } else {
+                e.preventDefault()
+                e.stopPropagation()
+
+                const ts = chartRef.current.timeScale()
+                const range = ts.getVisibleLogicalRange()
+                if (!range) return
+
+                const span = range.to - range.from
+                const factor = (span * 0.1) * Math.sign(e.deltaY)
+
+                const newFrom = range.from - factor
+
+                ts.setVisibleLogicalRange({
+                    from: newFrom,
+                    to: range.to
+                })
+            }
+        }
+
+        // Use Capture Phase to ensure we get event before LWC
+        container.addEventListener('wheel', onWheel, { passive: false, capture: true })
+        return () => container.removeEventListener('wheel', onWheel, { capture: true })
+    }, [])
 
     const handleMouseLeave = () => setHoveredScale(null)
     const toggleVisibility = (sId) => {
@@ -629,6 +828,7 @@ const ChartPane = forwardRef(({
 
     return (
         <div
+            ref={paneRef}
             className="chart-pane"
             style={{ height: height, position: 'relative', width: '100%' }}
             onMouseMove={handleMouseMove}
@@ -747,7 +947,7 @@ const ChartPane = forwardRef(({
                                                 onClick={() => onMovePane?.(-1)}
                                                 title="Move Pane Up"
                                             >
-                                                ↑
+                                                в†‘
                                             </button>
                                             <button
                                                 className="action-btn"
@@ -756,7 +956,7 @@ const ChartPane = forwardRef(({
                                                 onClick={() => onMovePane?.(1)}
                                                 title="Move Pane Down"
                                             >
-                                                ↓
+                                                в†“
                                             </button>
                                         </div>
                                     </div>
@@ -777,12 +977,12 @@ const ChartPane = forwardRef(({
                                 <div className="chart-panel__indicators-row" key={config.id}>
                                     <div className={`indicator ${!isVisible ? 'indicator--hidden' : ''}`} style={{ color: config.color }}>
                                         <button className={`eye-btn ${!isVisible ? 'eye-btn--off' : ''}`} onClick={() => toggleVisibility(config.id)}>
-                                            {isVisible ? '👁' : '👁‍🗨'}
+                                            {isVisible ? 'рџ‘Ѓ' : 'рџ‘ЃвЂЌрџ—Ё'}
                                         </button>
                                         <span className="ind-name">{config.title || config.chartType || config.type}</span>
                                         <span className="ind-value">{sOhlc.value?.toFixed(2)}{sOhlc.volume ? formatVolume(sOhlc.volume) : ''}</span>
                                         <div className="action-buttons">
-                                            <button className="action-btn" title="Настройки">⚙</button>
+                                            <button className="action-btn" title="РќР°СЃС‚СЂРѕР№РєРё">вљ™</button>
 
                                             {/* UI for Moving Series (Floor System) */}
                                             {/* We rely on SeriesMenu for advanced moves, but can add quick up/down here? */}
@@ -804,10 +1004,10 @@ const ChartPane = forwardRef(({
                                             />
                                             <button
                                                 className="action-btn action-btn--danger"
-                                                title="Удалить"
+                                                title="РЈРґР°Р»РёС‚СЊ"
                                                 onClick={() => onRemoveSeries?.(config.id)}
                                             >
-                                                ✕
+                                                вњ•
                                             </button>
                                         </div>
                                     </div>
@@ -826,9 +1026,9 @@ const ChartPane = forwardRef(({
                     <button
                         className="chart-control-btn"
                         onClick={() => setShowSettings(true)}
-                        title="Настройки графика"
+                        title="РќР°СЃС‚СЂРѕР№РєРё РіСЂР°С„РёРєР°"
                     >
-                        ⚙️
+                        вљ™пёЏ
                     </button>
                 </div>
             )}

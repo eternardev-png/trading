@@ -355,29 +355,30 @@
     }
 
     // Scale Controls (Auto / Log)
+    // Scale Controls (Auto / Log)
     .scale-controls {
         position: absolute;
-        bottom: 0;
-        z-index: 50;
+        bottom: 30px; // Above TimeScale (~26px height)
+        z-index: 100; // High z-index
         display: flex;
         align-items: center;
         justify-content: center;
-        gap: 2px;
-        padding: 4px 0; // vertical padding only
-        background: #131722;
-        opacity: 0;
-        transition: opacity 0.2s;
-        pointer-events: none;
-        width: 55px; // Fixed width to match typical Price Scale width
+        gap: 4px;
+        padding: 4px 6px; // Added horizontal padding
+        background: #1e222d; // Dark box background
+        border: 1px solid #2a2e39; // Subtle border
+        border-radius: 4px; // Rounded corners
+        opacity: 1; // Always visible
+        pointer-events: auto;
+        width: auto; // Content width
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3); // Shadow for depth
 
         &--left {
-            left: 0;
-            border-right: 1px solid #2a2e39; // Optional separator
+            left: 6px;
         }
 
         &--right {
-            right: 0;
-            border-left: 1px solid #2a2e39; // Optional separator
+            right: 6px; // Bottom Right Corner
         }
     }
 
