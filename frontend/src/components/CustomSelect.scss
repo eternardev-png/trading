@@ -1,0 +1,109 @@
+.custom-select {
+    position: relative;
+    user-select: none;
+    width: 100%;
+    min-width: 120px;
+    font-size: 13px;
+    font-family: inherit;
+    color: var(--text-primary);
+
+    &__trigger {
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 8px 12px;
+        background: rgba(255, 255, 255, 0.03); // Match StrategyBuilder input
+        border: 1px solid var(--glass-border);
+        border-radius: var(--border-radius-sm);
+        cursor: pointer;
+        transition: all 0.2s;
+        height: 36px; // Match standard input height usually
+
+        &:hover {
+            background: rgba(255, 255, 255, 0.05);
+            border-color: var(--text-secondary);
+        }
+
+        .arrow {
+            width: 0;
+            height: 0;
+            border-style: solid;
+            border-width: 5px 4px 0 4px;
+            border-color: var(--text-secondary) transparent transparent transparent;
+            margin-left: 8px;
+            transition: transform 0.2s;
+        }
+    }
+
+    &.open {
+        .custom-select__trigger {
+            border-color: var(--accent-blue);
+            box-shadow: 0 0 0 2px var(--accent-blue-glow);
+
+            .arrow {
+                transform: rotate(180deg);
+            }
+        }
+    }
+
+    &__options {
+        position: absolute;
+        top: calc(100% + 4px);
+        left: 0;
+        right: 0;
+        z-index: 9999;
+        background: var(--bg-secondary); // Dark theme match!
+        border: 1px solid var(--glass-border);
+        border-radius: var(--border-radius-sm);
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+        max-height: 250px;
+        overflow-y: auto;
+        animation: fadeIn 0.1s ease-out;
+        padding: 4px;
+
+        /* Scrollbar styles */
+        &::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        &::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        &::-webkit-scrollbar-thumb {
+            background: var(--glass-border);
+            border-radius: 3px;
+        }
+    }
+
+    &__option {
+        padding: 8px 12px;
+        cursor: pointer;
+        transition: all 0.1s;
+        border-radius: 4px;
+        color: var(--text-primary);
+
+        &:hover {
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-primary);
+        }
+
+        &.selected {
+            background: var(--accent-blue);
+            color: white;
+        }
+    }
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-4px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}

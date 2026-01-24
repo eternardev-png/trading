@@ -153,6 +153,11 @@
     }
 }
 
+.form-group select option {
+    background-color: var(--bg-secondary);
+    color: var(--text-primary);
+}
+
 .form-group input[type="checkbox"] {
     width: 20px;
     height: 20px;

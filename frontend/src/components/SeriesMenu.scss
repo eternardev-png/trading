@@ -40,12 +40,17 @@
 // Dropdown is outside charts in document.body, so generic selector
 .series-menu__dropdown {
     position: absolute;
-    background: #1e222d;
-    border: 1px solid #363a45;
-    border-radius: 4px;
+    background: rgba(30, 34, 45, 0.45);
+    /* Glass Background */
+    backdrop-filter: blur(12px);
+    /* Strong blur for menu */
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    /* Subtle rim */
+    border-radius: 6px;
     padding: 6px 0;
     z-index: 99999;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+    /* Deep shadow */
     min-width: 280px;
     font-family: -apple-system, BlinkMacSystemFont, 'Trebuchet MS', Roboto, Ubuntu, sans-serif;
     user-select: none;
@@ -65,6 +70,8 @@
             height: 10px;
             border-radius: 2px;
             flex-shrink: 0;
+            box-shadow: 0 0 8px currentColor;
+            /* Glow */
         }
 
         .name {
@@ -74,12 +81,13 @@
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
         }
     }
 
     .series-menu__divider {
         height: 1px;
-        background: #2a2e39;
+        background: rgba(255, 255, 255, 0.08);
         margin: 5px 0;
     }
 
@@ -96,10 +104,11 @@
         cursor: pointer;
         text-align: left;
         position: relative;
-        transition: background 0.1s;
+        transition: all 0.1s;
 
         &:hover {
-            background: #2a2e39;
+            background: rgba(255, 255, 255, 0.08);
+            color: #fff;
         }
 
         &.active {
@@ -111,11 +120,11 @@
             color: #f7525f;
 
             &:hover {
-                background: #f7525f;
-                color: #fff;
+                background: rgba(247, 82, 95, 0.15);
+                color: #ff8a93;
 
                 .icon {
-                    color: #fff;
+                    color: #ff8a93;
                 }
             }
         }
@@ -128,6 +137,11 @@
             display: flex;
             align-items: center;
             justify-content: center;
+            transition: color 0.1s;
+        }
+
+        &:hover .icon {
+            color: #d1d4dc;
         }
 
         // Submenu indicator
@@ -151,13 +165,16 @@
         position: absolute;
         left: 100%;
         top: -4px;
-        margin-left: 2px;
-        background: #1e222d;
-        border: 1px solid #363a45;
-        border-radius: 4px;
+        margin-left: 4px;
+        /* Gap */
+        background: rgba(30, 34, 45, 0.5);
+        /* Glass */
+        backdrop-filter: blur(12px);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 6px;
         padding: 6px 0;
         min-width: 240px;
-        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
         z-index: 100000;
     }
 }

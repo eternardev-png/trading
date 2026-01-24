@@ -5,6 +5,7 @@ import ChartPane from './ChartPane'
 import SymbolSearch from './SymbolSearch'
 import { alignSeriesData } from '../utils/dataAligner'
 import { calculateIndicator } from '../utils/indicators'
+import { resolveTickerData } from '../services/dataService'
 import './ChartPanel.scss'
 
 const API_BASE = 'http://127.0.0.1:8000/api/v1'
@@ -168,12 +169,10 @@ function ChartPanel() {
             try {
                 // Use global timeframe or series timeframe (if persistent)
                 const timeframe = '1d'
-                const url = `${API_BASE}/data?ticker=${encodeURIComponent(series.ticker)}&timeframe=${timeframe}`
-                const res = await fetch(url)
-                const json = await res.json()
-                if (json.data && json.data.length > 0) {
-                    const sortedData = [...json.data].sort((a, b) => a.time - b.time)
-                    setSeriesData(series.id, sortedData)
+                const data = await resolveTickerData(series.ticker, timeframe)
+
+                if (data && data.length > 0) {
+                    setSeriesData(series.id, data)
                 }
             } catch (e) {
                 console.error(`Fetch error for ${series.ticker}:`, e)

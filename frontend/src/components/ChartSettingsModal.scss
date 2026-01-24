@@ -154,17 +154,28 @@
 
                 .color-pickers {
                     display: flex;
-                    gap: 6px;
+                    gap: 8px;
 
                     input[type="color"] {
-                        width: 24px;
-                        height: 24px;
-                        border: 1px solid #434651;
+                        width: 48px;
+                        height: 32px;
+                        border: 1px solid var(--glass-border);
                         padding: 0;
                         background: none;
                         cursor: pointer;
                         border-radius: 4px;
                     }
+                }
+
+                /* Standalone color inputs (Interface tab) */
+                &>input[type="color"] {
+                    width: 48px;
+                    height: 32px;
+                    border: 1px solid var(--glass-border);
+                    padding: 0;
+                    background: none;
+                    cursor: pointer;
+                    border-radius: 4px;
                 }
 
                 select,

@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { useLayoutStore } from '../stores/useLayoutStore'
+import CustomSelect from './CustomSelect'
 import './ChartSettingsModal.scss'
 
 const ChartSettingsModal = ({ onClose, mainSeriesId }) => {
@@ -108,7 +109,7 @@ const ChartSettingsModal = ({ onClose, mainSeriesId }) => {
                 <h4>ПУСТЫЕ СВЕЧИ</h4> {/* Assuming translation 'Candles' */}
                 <div className="form-row">
                     <span>Стиль</span>
-                    <select
+                    <CustomSelect
                         value={s.upColor === 'transparent' ? 'hollow' : 'filled'}
                         onChange={e => {
                             const type = e.target.value
@@ -128,7 +129,7 @@ const ChartSettingsModal = ({ onClose, mainSeriesId }) => {
                     >
                         <option value="filled">Японские свечи</option>
                         <option value="hollow">Пустые свечи</option>
-                    </select>
+                    </CustomSelect>
                 </div>
                 <div className="form-row">
                     <label>
@@ -205,10 +206,10 @@ const ChartSettingsModal = ({ onClose, mainSeriesId }) => {
                 <div className="form-row">
                     <span>Фон</span>
                     <div className="combo-input">
-                        <select value={chartAppearance.backgroundType} onChange={e => setChartAppearance({ backgroundType: e.target.value })}>
+                        <CustomSelect value={chartAppearance.backgroundType} onChange={e => setChartAppearance({ backgroundType: e.target.value })}>
                             <option value="solid">Сплошной</option>
                             <option value="gradient">Градиент</option>
-                        </select>
+                        </CustomSelect>
                         <div className="color-pickers">
                             <input type="color" value={chartAppearance.backgroundColor1} onChange={e => setChartAppearance({ backgroundColor1: e.target.value })} />
                             {chartAppearance.backgroundType === 'gradient' && (
@@ -220,12 +221,12 @@ const ChartSettingsModal = ({ onClose, mainSeriesId }) => {
                 <div className="form-row">
                     <span>Линии сетки</span>
                     <div className="combo-input">
-                        <select value={chartAppearance.gridLines} onChange={e => setChartAppearance({ gridLines: e.target.value })}>
+                        <CustomSelect value={chartAppearance.gridLines} onChange={e => setChartAppearance({ gridLines: e.target.value })}>
                             <option value="all">Все</option>
                             <option value="vert">Вертикальные</option>
                             <option value="horz">Горизонтальные</option>
                             <option value="none">Нет</option>
-                        </select>
+                        </CustomSelect>
                         <input type="color" value={chartAppearance.gridColor} onChange={e => setChartAppearance({ gridColor: e.target.value })} />
                     </div>
                 </div>

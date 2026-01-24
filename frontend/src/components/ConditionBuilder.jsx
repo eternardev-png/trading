@@ -1,4 +1,5 @@
 import React from 'react'
+import CustomSelect from './CustomSelect'
 
 const PAIRS = ['BTC/USDT', 'BTC/ETH', 'ETH/USDT', 'BNB/USDT', 'SOL/USDT']
 const INDICATORS = [
@@ -26,40 +27,40 @@ function ConditionBuilder({ condition, type, onChange, onRemove }) {
                 {/* Pair Selection */}
                 <div className="condition-field">
                     <label>Пара</label>
-                    <select
+                    <CustomSelect
                         value={condition.pair}
                         onChange={(e) => onChange({ pair: e.target.value })}
                     >
                         {PAIRS.map(pair => (
                             <option key={pair} value={pair}>{pair}</option>
                         ))}
-                    </select>
+                    </CustomSelect>
                 </div>
 
                 {/* Operator */}
                 <div className="condition-field">
                     <label>Условие</label>
-                    <select
+                    <CustomSelect
                         value={condition.operator}
                         onChange={(e) => onChange({ operator: e.target.value })}
                     >
                         {OPERATORS.map(op => (
                             <option key={op.value} value={op.value}>{op.label}</option>
                         ))}
-                    </select>
+                    </CustomSelect>
                 </div>
 
                 {/* Compare Type */}
                 <div className="condition-field">
                     <label>Сравнить с</label>
-                    <select
+                    <CustomSelect
                         value={condition.compareType}
                         onChange={(e) => onChange({ compareType: e.target.value })}
                     >
                         <option value="indicator">Индикатор</option>
                         <option value="pair">Пара</option>
                         <option value="value">Значение</option>
-                    </select>
+                    </CustomSelect>
                 </div>
 
                 {/* Compare Value/Indicator/Pair */}
@@ -67,14 +68,14 @@ function ConditionBuilder({ condition, type, onChange, onRemove }) {
                     <>
                         <div className="condition-field">
                             <label>Индикатор</label>
-                            <select
+                            <CustomSelect
                                 value={condition.compareIndicator}
                                 onChange={(e) => onChange({ compareIndicator: e.target.value })}
                             >
                                 {INDICATORS.map(ind => (
                                     <option key={ind.id} value={ind.id}>{ind.name}</option>
                                 ))}
-                            </select>
+                            </CustomSelect>
                         </div>
                         {INDICATORS.find(i => i.id === condition.compareIndicator)?.hasParams && (
                             <div className="condition-field">
@@ -94,14 +95,14 @@ function ConditionBuilder({ condition, type, onChange, onRemove }) {
                 {condition.compareType === 'pair' && (
                     <div className="condition-field">
                         <label>Пара</label>
-                        <select
+                        <CustomSelect
                             value={condition.comparePair}
                             onChange={(e) => onChange({ comparePair: e.target.value })}
                         >
                             {PAIRS.map(pair => (
                                 <option key={pair} value={pair}>{pair}</option>
                             ))}
-                        </select>
+                        </CustomSelect>
                     </div>
                 )}
 
@@ -133,13 +134,13 @@ function ConditionBuilder({ condition, type, onChange, onRemove }) {
                             value={condition.positionSize}
                             onChange={(e) => onChange({ positionSize: e.target.value === '' ? '' : Number(e.target.value) })}
                         />
-                        <select
+                        <CustomSelect
                             value={condition.positionSizeType}
                             onChange={(e) => onChange({ positionSizeType: e.target.value })}
                         >
                             <option value="percent">% капитала</option>
                             <option value="fixed">Фиксированная сумма</option>
-                        </select>
+                        </CustomSelect>
                     </div>
                 </div>
 
@@ -157,14 +158,14 @@ function ConditionBuilder({ condition, type, onChange, onRemove }) {
                 {condition.enableDCA && (
                     <div className="condition-field">
                         <label>Период DCA</label>
-                        <select
+                        <CustomSelect
                             value={condition.dcaPeriod}
                             onChange={(e) => onChange({ dcaPeriod: e.target.value })}
                         >
                             {DCA_PERIODS.map(period => (
                                 <option key={period} value={period}>{period}</option>
                             ))}
-                        </select>
+                        </CustomSelect>
                     </div>
                 )}
             </div>

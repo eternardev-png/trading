@@ -9,6 +9,7 @@
     --bg-secondary-rgb: 0, 0, 0;
     /* Deep black for contrast */
     --bg-tertiary: #2a2e39;
+    color-scheme: dark; // Force native controls to dark mode
 
     // Glassmorphism System - iOS Oriented
     --glass-bg: rgba(var(--bg-secondary-rgb), 0.6);
