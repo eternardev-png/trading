@@ -370,6 +370,7 @@
 
     // Scale Controls (Auto / Log)
     // Scale Controls (Auto / Log)
+    // Scale Controls (Auto / Log)
     .scale-controls {
         position: absolute;
         bottom: 30px; // Above TimeScale (~26px height)
@@ -379,8 +380,8 @@
         justify-content: center;
         gap: 4px;
         padding: 4px 6px; // Added horizontal padding
-        background: #1e222d; // Dark box background
-        border: 1px solid #2a2e39; // Subtle border
+        background: rgba(var(--bg-secondary-rgb), 0.95); // Dynamic Dark
+        border: 1px solid var(--glass-border); // Subtle border
         border-radius: 4px; // Rounded corners
         opacity: 1; // Always visible
         pointer-events: auto;
@@ -398,7 +399,7 @@
 
     // Show on hover of the control itself OR the parent pane scale area?
     // Since we can't target "scale area" easily with CSS only from here without structure changes,
-    // We will show it when hovering the chart pane near the edge? 
+    // We will show it when hovering the .chart-pane near the edge? 
     // Simplest: Show when hovering the .chart-pane (ChartPane.scss dependency needed? No, chart-pane class is on div)
     // We need to target .scale-controls inside .chart-pane:hover
     // But the user said "when I hover the scale".
@@ -419,7 +420,7 @@
     .scale-btn {
         background: rgba(255, 255, 255, 0.02); // Subtle background for visibility
         border: none;
-        color: #787b86;
+        color: var(--text-secondary);
         font-size: 13px; // Increased from 10px
         font-weight: bold;
         cursor: pointer;
@@ -432,12 +433,12 @@
         justify-content: center;
 
         &:hover {
-            color: #d1d4dc;
+            color: var(--text-primary);
             background: rgba(255, 255, 255, 0.1);
         }
 
         &.active {
-            color: #2962ff;
+            color: var(--accent-blue);
             background: rgba(41, 98, 255, 0.15);
         }
     }

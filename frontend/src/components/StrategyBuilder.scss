@@ -19,9 +19,10 @@
     backdrop-filter: blur(20px);
     border-radius: var(--border-radius-lg);
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
-    width: 95%;
-    max-width: 1200px;
-    max-height: 90vh;
+    width: 1000px;
+    max-width: 95vw;
+    height: 800px;
+    max-height: 95vh;
     display: flex;
     flex-direction: column;
     color: var(--text-primary);
@@ -41,7 +42,7 @@
     background: transparent;
     border: none;
     color: var(--text-primary);
-    font-size: 18px;
+    font-size: 22px; // Increased
     font-weight: 600;
     outline: none;
     flex: 1;
@@ -87,7 +88,7 @@
     color: var(--text-secondary);
     padding: 12px 16px;
     cursor: pointer;
-    font-size: 13px;
+    font-size: 15px;
     font-weight: 500;
     border-bottom: 2px solid transparent;
     transition: all var(--anim-fast);
@@ -120,13 +121,13 @@
 
 /* Form Styles */
 .form-group {
-    margin-bottom: 20px;
+    margin-bottom: 28px;
 }
 
 .form-group label {
     display: block;
     color: var(--text-secondary);
-    font-size: 12px;
+    font-size: 14px;
     margin-bottom: 8px;
     font-weight: 500;
 }
@@ -134,6 +135,7 @@
 .form-group input[type="text"],
 .form-group input[type="number"],
 .form-group select {
+
     width: 100%;
     background: rgba(255, 255, 255, 0.03);
     border: 1px solid var(--glass-border);
@@ -149,6 +151,16 @@
         background: rgba(255, 255, 255, 0.05);
         box-shadow: 0 0 0 2px var(--accent-blue-glow);
     }
+}
+
+.form-group input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+    margin-right: 24px; // Generous spacing
+    accent-color: var(--accent-blue);
+    cursor: pointer;
+    vertical-align: middle;
+    outline: none;
 }
 
 .form-group input[type="color"] {
@@ -180,7 +192,7 @@
     font-weight: 700;
     letter-spacing: 1px;
     text-transform: uppercase;
-    margin: 24px 0 16px;
+    margin: 32px 0 24px;
     padding-bottom: 8px;
     border-bottom: 1px solid var(--glass-border);
 }
@@ -248,8 +260,8 @@
     background: rgba(255, 255, 255, 0.02);
     border: 1px solid var(--glass-border);
     border-radius: var(--border-radius-sm);
-    padding: 16px;
-    margin-bottom: 12px;
+    padding: 24px;
+    margin-bottom: 20px;
     transition: border-color var(--anim-fast);
 
     &:hover {
@@ -343,4 +355,42 @@
         opacity: 1;
         transform: scale(1);
     }
+}
+
+/* Condition Builder Specific Spacing */
+.condition-section {
+    margin-bottom: 48px; // Large gap between Buy and Sell blocks
+}
+
+.condition-section__header {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 20px; // Space between Title and Button (+4px)
+    margin-bottom: 24px; // Space between Button and Text/List
+
+    h3 {
+        font-size: 18px; // Larger Title
+        font-weight: 700;
+        color: var(--text-primary);
+        margin: 0;
+    }
+}
+
+.empty-state {
+    color: var(--text-secondary);
+    font-size: 15px;
+    margin-top: 12px;
+    opacity: 0.7;
+}
+
+/* Statistics Tab Spacing */
+.stats-header {
+    margin-bottom: 32px; // Space between Button and Text
+}
+
+.stats-placeholder {
+    color: var(--text-secondary);
+    font-size: 15px;
+    opacity: 0.8;
 }
