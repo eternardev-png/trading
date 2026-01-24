@@ -278,7 +278,7 @@ function ChartPanel() {
         console.log(`Loading more data for ${ticker} before ${toTimestamp}...`)
 
         try {
-            const olderData = await resolveTickerData(ticker, timeframe, toTimestamp) // Pass to_timestamp
+            const olderData = await resolveTickerData(ticker, timeframe, toTimestamp, 1000) // Pass to_timestamp and limit 1000
 
             if (olderData && olderData.length > 0) {
                 // Filter out duplicates (overlap)
@@ -340,6 +340,10 @@ function ChartPanel() {
                             onScaleChange={handleScaleChange}
                             onSymbolSearchClick={() => setIsSearchOpen(true)}
                             onChartReady={handleChartReady}
+
+                            // Infinite Scroll
+                            onLoadMore={handleLoadMore}
+                            isLoading={isLoadingMore}
 
                             // Pane Reordering (Floor Move)
                             onMovePane={(dir) => movePane(pane.id, dir)} // removed chartId

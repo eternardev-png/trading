@@ -34,13 +34,20 @@ const ChartPane = forwardRef(({
     onMovePane,
     canMoveUp,
     canMoveDown,
-    timeScaleVisible = true // Default to true
+    timeScaleVisible = true, // Default to true
+    onLoadMore, // Infinite Scroll Callback
+    isLoading = false // Infinite Scroll Loading State
 }, ref) => {
     const containerRef = useRef(null)
     const paneRef = useRef(null)
     const chartRef = useRef(null)
     const seriesMap = useRef({})
     const isFirstLoad = useRef(true)
+    const lastDataCount = useRef(0) // Track data count for scroll preservation
+    const isLoadingRef = useRef(isLoading) // Ref to access latest loading state in listeners
+
+    useEffect(() => { isLoadingRef.current = isLoading }, [isLoading])
+
     const strategySignals = useLayoutStore(state => state.strategySignals)
     const magnetMode = useLayoutStore(state => state.magnetMode)
     const drawingsVisible = useLayoutStore(state => state.drawingsVisible)
@@ -272,8 +279,17 @@ const ChartPane = forwardRef(({
         // No direct event. We hook into TIME RANGE changes (often happen with scroll)
         // AND add DOM listeners to container for mouseup/wheel (capture phase).
 
-        lwChart.timeScale().subscribeVisibleTimeRangeChange(() => {
+        lwChart.timeScale().subscribeVisibleLogicalRangeChange((range) => {
             syncScaleModes()
+
+            // Infinite Scroll Trigger
+            // Trigger when user scrolls near the requested history edge (left side)
+            if (onLoadMore && range && range.from < 10) {
+                // Throttle requests using ref
+                if (!isLoadingRef.current) {
+                    onLoadMore()
+                }
+            }
         })
 
         const container = containerRef.current
@@ -655,9 +671,30 @@ const ChartPane = forwardRef(({
             }
         })
 
-        // 2. Restore range
+        // 2. Restore range & Scroll Preservation
+        // Calculate total data points (Driver: Main Series or first available)
+        // Assume all series are aligned
+        const currentDataLength = seriesConfigs[0]?.data?.length || data?.length || 0
+        const addedCount = currentDataLength - lastDataCount.current
+
+        // Update Ref for next render
+        lastDataCount.current = currentDataLength
+
         if (prevRange) {
-            chartRef.current.timeScale().setVisibleLogicalRange(prevRange)
+            // Check if we loaded history (added data while at the start)
+            // If we added data (>0) and we were near the left edge (< -5 or small positive)
+            // Shift range to maintain visual position
+            if (addedCount > 0 && prevRange.from < 20) {
+                const newRange = {
+                    from: prevRange.from + addedCount,
+                    to: prevRange.to + addedCount
+                }
+                // Verify validity?
+                chartRef.current.timeScale().setVisibleLogicalRange(newRange)
+            } else {
+                // Normal restore (e.g. data update, resize)
+                chartRef.current.timeScale().setVisibleLogicalRange(prevRange)
+            }
         } else {
             chartRef.current.timeScale().fitContent()
 
