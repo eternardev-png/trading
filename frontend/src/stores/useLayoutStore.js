@@ -102,6 +102,17 @@ export const useLayoutStore = create((set, get) => ({
         chartAppearance: { ...state.chartAppearance, ...updates }
     })),
 
+    // --- INTERFACE APPEARANCE STATE ---
+    interfaceAppearance: {
+        bgPrimary: '#131722',
+        bgSecondary: '#1e222d',
+        textPrimary: '#d1d4dc',
+        accentColor: '#2962ff'
+    },
+    setInterfaceAppearance: (updates) => set((state) => ({
+        interfaceAppearance: { ...state.interfaceAppearance, ...updates }
+    })),
+
     // --- STRATEGY STATE ---
     strategies: [],
     activeStrategy: null,

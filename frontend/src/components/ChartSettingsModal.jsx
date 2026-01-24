@@ -9,6 +9,8 @@ const ChartSettingsModal = ({ onClose, mainSeriesId }) => {
     const updateSeriesSettings = useLayoutStore(state => state.updateSeriesSettings)
     const setChartAppearance = useLayoutStore(state => state.setChartAppearance)
     const chartAppearance = useLayoutStore(state => state.chartAppearance)
+    const interfaceAppearance = useLayoutStore(state => state.interfaceAppearance)
+    const setInterfaceAppearance = useLayoutStore(state => state.setInterfaceAppearance)
 
     // --- SERIES STATE ---
     // Retrieve the actual series object from store to reflect current state
@@ -56,6 +58,12 @@ const ChartSettingsModal = ({ onClose, mainSeriesId }) => {
                 backgroundColor2: '#010101'
             })
 
+            // 1.1 Interface Colors
+            setInterfaceAppearance({
+                bgPrimary: '#131313',
+                bgSecondary: '#020203'
+            })
+
             // 2. Timezone: UTC+3
             setChartAppearance({ timezone: 'UTC+3' })
 
@@ -87,7 +95,9 @@ const ChartSettingsModal = ({ onClose, mainSeriesId }) => {
         { id: 'instrument', label: 'Инструмент', icon: '\u233D' }, // Placeholder icon
         { id: 'status', label: 'Строка статуса', icon: '\u2261' },
         { id: 'scales', label: 'Шкалы и линии', icon: '\u21B3' },
+        { id: 'scales', label: 'Шкалы и линии', icon: '\u21B3' },
         { id: 'appearance', label: 'Оформление', icon: '\u270E' }, // Pencilish
+        { id: 'interface', label: 'Интерфейс', icon: '\uD83C\uDFA8' }, // Palette
         { id: 'trading', label: 'Торговля', icon: '\u21C4' },
         { id: 'alerts', label: 'Оповещения', icon: '\u23F0' },
         { id: 'events', label: 'События', icon: '\uD83D\uDCC5' },
@@ -281,6 +291,35 @@ const ChartSettingsModal = ({ onClose, mainSeriesId }) => {
         </div>
     )
 
+    const renderInterface = () => (
+        <div className="tab-content interface-tab">
+            <div className="section">
+                <h4>ЦВЕТА ИНТЕРФЕЙСА</h4>
+                <div className="form-row">
+                    <span>Основной фон</span>
+                    <input type="color" value={interfaceAppearance.bgPrimary} onChange={e => setInterfaceAppearance({ bgPrimary: e.target.value })} />
+                </div>
+                <div className="form-row">
+                    <span>Фон панелей</span>
+                    <input type="color" value={interfaceAppearance.bgSecondary} onChange={e => setInterfaceAppearance({ bgSecondary: e.target.value })} />
+                </div>
+                <div className="form-row">
+                    <span>Основной текст</span>
+                    <input type="color" value={interfaceAppearance.textPrimary} onChange={e => setInterfaceAppearance({ textPrimary: e.target.value })} />
+                </div>
+                <div className="form-row">
+                    <span>Акцентный цвет</span>
+                    <input type="color" value={interfaceAppearance.accentColor} onChange={e => setInterfaceAppearance({ accentColor: e.target.value })} />
+                </div>
+            </div>
+            <div className="section">
+                <p style={{ fontSize: '12px', color: '#787b86' }}>
+                    * Изменения применяются ко всему приложению мгновенно.
+                </p>
+            </div>
+        </div>
+    )
+
     return (
         <div className="chart-settings-modal-overlay" onClick={onClose}>
             <div className="chart-settings-modal" onClick={e => e.stopPropagation()}>
@@ -305,6 +344,7 @@ const ChartSettingsModal = ({ onClose, mainSeriesId }) => {
                     <div className="content">
                         {activeTab === 'instrument' && renderInstrument()}
                         {activeTab === 'appearance' && renderAppearance()}
+                        {activeTab === 'interface' && renderInterface()}
                         {/* Placeholders for others */}
                         {['status', 'scales', 'trading', 'alerts', 'events'].includes(activeTab) && (
                             <div className="tab-content placeholder">
