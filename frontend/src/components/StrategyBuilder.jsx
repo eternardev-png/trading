@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import ReactDOM from 'react-dom'
 import { useLayoutStore } from '../stores/useLayoutStore'
 import ConditionBuilder from './ConditionBuilder'
 import { runBacktest } from '../utils/strategyEngine'
@@ -184,7 +185,7 @@ function StrategyBuilder({ isOpen, onClose }) {
 
     if (!isOpen) return null
 
-    return (
+    return ReactDOM.createPortal(
         <div className="strategy-builder-overlay" onClick={onClose}>
             <div className="strategy-builder" onClick={(e) => e.stopPropagation()}>
                 <div className="strategy-builder__header">
@@ -520,7 +521,8 @@ function StrategyBuilder({ isOpen, onClose }) {
                     <button className="btn-primary" onClick={handleSave}>Ок</button>
                 </div>
             </div>
-        </div>
+        </div>,
+        document.body
     )
 }
 

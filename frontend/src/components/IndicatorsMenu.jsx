@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
+import ReactDOM from 'react-dom'
 import './IndicatorsMenu.scss'
 
 const INDICATORS = [
@@ -31,7 +32,7 @@ const IndicatorsMenu = ({ isOpen, onClose, onSelect }) => {
         item.id.toLowerCase().includes(searchTerm.toLowerCase())
     )
 
-    return (
+    return ReactDOM.createPortal(
         <div className="indicators-menu-overlay" onClick={onClose}>
             <div className="indicators-menu-modal" onClick={e => e.stopPropagation()}>
                 <div className="indicators-menu__header">
@@ -83,7 +84,8 @@ const IndicatorsMenu = ({ isOpen, onClose, onSelect }) => {
                     </div>
                 </div>
             </div>
-        </div>
+        </div>,
+        document.body
     )
 }
 

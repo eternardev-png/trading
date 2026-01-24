@@ -2,9 +2,16 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    height: 40px;
-    padding: 0 8px;
-    background: var(--bg-primary);
+    height: 48px; // Slightly taller for better touch
+    padding: 0 12px;
+    margin: 8px 12px 0 12px; // Floating effect
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-blur);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--border-radius-md);
+    box-shadow: var(--glass-shadow);
+    z-index: 100;
+    transition: all var(--anim-smooth);
 
     &__section {
         display: flex;
@@ -16,7 +23,7 @@
         }
 
         &--right {
-            gap: 4px;
+            gap: 8px;
         }
     }
 
@@ -29,21 +36,23 @@
     &__ticker-btn {
         display: flex;
         align-items: center;
-        gap: 8px;
-        padding: 4px 8px;
-        background: transparent;
-        border: none;
-        border-radius: 4px;
+        gap: 10px;
+        padding: 6px 12px;
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid transparent;
+        border-radius: var(--border-radius-sm);
         cursor: pointer;
         color: var(--text-primary);
-        transition: background 0.1s;
+        transition: all var(--anim-fast);
 
         &:hover {
-            background: var(--bg-tertiary);
+            background: rgba(255, 255, 255, 0.08);
+            border-color: var(--glass-border);
+            transform: translateY(-1px);
         }
 
         svg {
-            color: var(--text-secondary);
+            color: var(--accent-blue);
         }
 
         .ticker-text {
@@ -53,117 +62,80 @@
         }
     }
 
-    // End ticker-btn
-
     &__plus-btn {
-        width: 26px;
-        height: 26px;
-        border-radius: 4px;
-        border: none;
-        background: transparent;
-        color: var(--text-secondary);
-        cursor: pointer;
+        width: 30px;
+        height: 30px;
+        border-radius: var(--border-radius-sm);
         display: flex;
         align-items: center;
         justify-content: center;
-        transition: all 0.1s;
-        margin-left: 2px;
-        padding: 0;
+        color: var(--text-secondary);
+        transition: all var(--anim-fast);
 
         &:hover {
-            background: var(--bg-tertiary);
+            background: rgba(255, 255, 255, 0.08);
             color: var(--text-primary);
         }
+    }
 
-        svg {
-            // width/height controlled by svg attr or here
-            width: 18px;
-            height: 18px;
+    &__settings-btn {
+        width: 28px;
+        height: 28px;
+        border-radius: var(--border-radius-sm);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--text-secondary);
+        background: transparent;
+        border: none;
+        cursor: pointer;
+        transition: all var(--anim-fast);
+        opacity: 0.8;
+
+        &:hover {
+            color: var(--text-primary);
+            background: rgba(255, 255, 255, 0.05);
+            opacity: 1;
+            transform: rotate(45deg);
+            /* Subtle playful interaction */
         }
     }
 
     &__btn-text {
         display: flex;
         align-items: center;
-        gap: 6px;
-        padding: 4px 8px;
-        background: transparent;
-        border: none;
-        border-radius: 4px;
-        cursor: pointer;
-        color: var(--text-primary);
-        font-size: 14px;
+        gap: 8px;
+        padding: 6px 12px;
+        border-radius: var(--border-radius-sm);
+        color: var(--text-secondary);
+        font-size: 13px;
         font-weight: 500;
-        transition: background 0.1s;
+        transition: all var(--anim-fast);
 
         &:hover {
-            color: var(--accent-blue);
-            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            background: rgba(255, 255, 255, 0.05);
 
             svg {
                 color: var(--accent-blue);
+                filter: drop-shadow(0 0 4px var(--accent-blue-glow));
             }
         }
 
-        svg {
-            width: 18px;
-            height: 18px;
-            color: var(--text-secondary);
+        &.active {
+            color: var(--accent-blue);
+            background: rgba(41, 98, 255, 0.1);
         }
     }
 
     &__separator {
         width: 1px;
-        height: 20px;
-        background: var(--border-color);
+        height: 24px;
+        background: var(--glass-border);
         margin: 0 8px;
     }
 
-    &__timeframes {
-        display: flex;
-        gap: 1px;
-    }
-
-    &__tf-btn {
-        padding: 5px 8px;
-        font-size: 12px;
-        color: var(--text-secondary);
-        border-radius: 3px;
-        transition: all 0.1s;
-
-        &:hover {
-            color: var(--text-primary);
-        }
-
-        &.active {
-            background: var(--bg-tertiary);
-            color: var(--text-primary);
-        }
-    }
-
-    &__sync-group {
-        display: flex;
-        gap: 2px;
-    }
-
-    &__sync-btn {
-        width: 28px;
-        height: 28px;
-        font-size: 12px;
-        color: var(--text-secondary);
-        border-radius: 3px;
-        transition: all 0.1s;
-
-        &:hover {
-            background: var(--bg-tertiary);
-        }
-
-        &.active {
-            color: var(--accent-blue);
-        }
-    }
-
-    // Timeframe Dropdown Menu
+    // Modern Dropdown Button (Timeframe)
     &__timeframe-selector {
         position: relative;
     }
@@ -172,18 +144,16 @@
         display: flex;
         align-items: center;
         gap: 6px;
-        padding: 5px 10px;
+        padding: 6px 10px;
         font-size: 13px;
-        font-weight: 500;
+        font-weight: 600;
         color: var(--text-primary);
-        background: transparent;
-        border: none;
-        border-radius: 4px;
-        cursor: pointer;
-        transition: all 0.1s;
+        background: rgba(255, 255, 255, 0.03);
+        border-radius: var(--border-radius-sm);
+        transition: all var(--anim-fast);
 
         &:hover {
-            background: var(--bg-tertiary);
+            background: rgba(255, 255, 255, 0.08);
         }
 
         .dropdown-arrow {
@@ -192,92 +162,99 @@
         }
     }
 
+    // Glass Dropdown Menu
     &__timeframe-menu {
         position: absolute;
-        top: calc(100% + 4px);
+        top: calc(100% + 8px);
         left: 0;
-        min-width: 120px;
-        padding: 4px;
-        background: var(--bg-secondary);
-        border: 1px solid var(--border-color);
-        border-radius: 6px;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        min-width: 140px;
+        padding: 6px;
+        background: rgba(var(--bg-secondary-rgb), 0.95);
+        backdrop-filter: blur(16px);
+        border: 1px solid var(--glass-border);
+        border-radius: var(--border-radius-md);
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
         z-index: 1000;
         display: grid;
         grid-template-columns: repeat(3, 1fr);
-        gap: 2px;
+        gap: 4px;
+        animation: fadeIn 0.15s ease-out;
 
         .timeframe-menu-item {
-            padding: 6px 10px;
+            padding: 8px;
             font-size: 12px;
             color: var(--text-secondary);
-            background: transparent;
-            border: none;
-            border-radius: 3px;
-            cursor: pointer;
-            text-align: center;
-            transition: all 0.1s;
-            white-space: nowrap;
+            border-radius: var(--border-radius-sm);
+            transition: all var(--anim-fast);
 
             &:hover {
-                background: var(--bg-tertiary);
                 color: var(--text-primary);
+                background: rgba(255, 255, 255, 0.08);
             }
 
             &.active {
                 background: var(--accent-blue);
                 color: white;
+                box-shadow: 0 2px 8px var(--accent-blue-glow);
             }
         }
     }
 
-    &__layout-wrapper {
-        position: relative;
-    }
-
-    &__layout-btn {
-        width: 32px;
-        height: 28px;
-        font-size: 14px;
-        color: var(--text-secondary);
-        border-radius: 3px;
-
-        &:hover {
-            background: var(--bg-tertiary);
-            color: var(--text-primary);
-        }
-    }
-
-    &__layout-menu {
-        position: absolute;
-        top: 100%;
-        right: 0;
-        margin-top: 4px;
-        padding: 4px;
-        background: var(--bg-secondary);
-        border: 1px solid var(--border-color);
-        border-radius: 4px;
+    &__sync-group {
         display: flex;
-        flex-direction: column;
-        gap: 2px;
-        z-index: 100;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        gap: 4px;
+        background: rgba(0, 0, 0, 0.2);
+        padding: 2px;
+        border-radius: var(--border-radius-sm);
     }
 
-    &__layout-option {
-        width: 44px;
-        height: 28px;
+    &__sync-btn {
+        width: 32px;
+        height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
         font-size: 14px;
-        color: var(--text-secondary);
-        border-radius: 3px;
+        color: var(--text-tertiary);
+        border-radius: 4px;
+        transition: all var(--anim-fast);
 
         &:hover {
-            background: var(--bg-tertiary);
             color: var(--text-primary);
+            background: rgba(255, 255, 255, 0.05);
         }
 
         &.active {
             color: var(--accent-blue);
+            background: rgba(41, 98, 255, 0.1);
         }
+    }
+
+    &__layout-btn {
+        width: 36px;
+        height: 36px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--text-secondary);
+        border-radius: var(--border-radius-sm);
+        transition: all var(--anim-fast);
+
+        &:hover {
+            background: rgba(255, 255, 255, 0.08);
+            color: var(--text-primary);
+        }
+    }
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-4px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
     }
 }

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
+import ReactDOM from 'react-dom'
 import './SymbolSearch.scss'
 
 const MOCK_SYMBOLS = [
@@ -51,7 +52,7 @@ const SymbolSearch = ({ isOpen, onClose, onSelect, mode = 'set-main' }) => {
         return matchSearch && false
     })
 
-    return (
+    return ReactDOM.createPortal(
         <div className="symbol-search-overlay" onClick={onClose}>
             <div className="symbol-search-modal" onClick={e => e.stopPropagation()}>
                 <div className="symbol-search__header">
@@ -115,7 +116,8 @@ const SymbolSearch = ({ isOpen, onClose, onSelect, mode = 'set-main' }) => {
                     ))}
                 </div>
             </div>
-        </div>
+        </div>,
+        document.body
     )
 }
 

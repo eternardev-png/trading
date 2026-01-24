@@ -51,17 +51,17 @@ const ChartSettingsModal = ({ onClose, mainSeriesId }) => {
 
     const applyTemplate = (templateName) => {
         if (templateName === 'Late') {
-            // 1. Appearance: Gradient Black -> #131313
+            // 1. Appearance: 0 0 0 / 2 2 2
             setChartAppearance({
                 backgroundType: 'gradient',
                 backgroundColor1: '#000000',
-                backgroundColor2: '#010101'
+                backgroundColor2: '#020202'
             })
 
-            // 1.1 Interface Colors
+            // 1.1 Interface Colors: 0 0 0 / 24 24 24
             setInterfaceAppearance({
-                bgPrimary: '#131313',
-                bgSecondary: '#020203'
+                bgPrimary: '#000000',
+                bgSecondary: '#181818'
             })
 
             // 2. Timezone: UTC+3
@@ -94,7 +94,6 @@ const ChartSettingsModal = ({ onClose, mainSeriesId }) => {
     const tabs = [
         { id: 'instrument', label: 'Инструмент', icon: '\u233D' }, // Placeholder icon
         { id: 'status', label: 'Строка статуса', icon: '\u2261' },
-        { id: 'scales', label: 'Шкалы и линии', icon: '\u21B3' },
         { id: 'scales', label: 'Шкалы и линии', icon: '\u21B3' },
         { id: 'appearance', label: 'Оформление', icon: '\u270E' }, // Pencilish
         { id: 'interface', label: 'Интерфейс', icon: '\uD83C\uDFA8' }, // Palette
@@ -323,23 +322,74 @@ const ChartSettingsModal = ({ onClose, mainSeriesId }) => {
     return (
         <div className="chart-settings-modal-overlay" onClick={onClose}>
             <div className="chart-settings-modal" onClick={e => e.stopPropagation()}>
-                <div className="modal-header">
-                    <h3>Настройки</h3>
-                    <button className="close-btn" onClick={onClose}>{'\u2715'}</button>
-                </div>
+                <button className="close-btn" onClick={onClose}>{'\u2715'}</button>
 
                 <div className="modal-body">
                     <div className="sidebar">
-                        {tabs.map(tab => (
+                        <div className="sidebar-list">
+                            {tabs.map(tab => (
+                                <button
+                                    key={tab.id}
+                                    className={`sidebar-tab ${activeTab === tab.id ? 'active' : ''}`}
+                                    onClick={() => setActiveTab(tab.id)}
+                                >
+                                    <span className="icon">{tab.icon}</span>
+                                    {tab.label}
+                                </button>
+                            ))}
+                        </div>
+                        <div className="sidebar-bottom" style={{ padding: '10px', borderTop: '1px solid #2a2e39', position: 'relative' }}>
                             <button
-                                key={tab.id}
-                                className={`sidebar-tab ${activeTab === tab.id ? 'active' : ''}`}
-                                onClick={() => setActiveTab(tab.id)}
+                                onClick={() => setShowTemplateMenu(!showTemplateMenu)}
+                                style={{
+                                    width: '100%',
+                                    background: '#2a2e39',
+                                    border: 'none',
+                                    color: '#d1d4dc',
+                                    padding: '8px',
+                                    borderRadius: '4px',
+                                    cursor: 'pointer',
+                                    textAlign: 'left',
+                                    display: 'flex',
+                                    justifyContent: 'space-between'
+                                }}
                             >
-                                <span className="icon">{tab.icon}</span>
-                                {tab.label}
+                                <span>Шаблон</span>
+                                <span>{'\u25B2'}</span>
                             </button>
-                        ))}
+                            {showTemplateMenu && (
+                                <div className="template-menu" style={{
+                                    position: 'absolute',
+                                    bottom: '100%',
+                                    left: '10px',
+                                    width: 'calc(100% - 20px)',
+                                    marginBottom: '4px',
+                                    background: '#1e222d',
+                                    border: '1px solid #2a2e39',
+                                    borderRadius: '4px',
+                                    zIndex: 100,
+                                    boxShadow: '0 -4px 10px rgba(0,0,0,0.3)'
+                                }}>
+                                    <button
+                                        onClick={() => applyTemplate('Late')}
+                                        style={{
+                                            display: 'block',
+                                            width: '100%',
+                                            textAlign: 'left',
+                                            background: 'none',
+                                            border: 'none',
+                                            color: '#d1d4dc',
+                                            padding: '10px 16px',
+                                            cursor: 'pointer',
+                                        }}
+                                        onMouseEnter={e => e.target.style.background = '#2a2e39'}
+                                        onMouseLeave={e => e.target.style.background = 'none'}
+                                    >
+                                        Late (Dark)
+                                    </button>
+                                </div>
+                            )}
+                        </div>
                     </div>
                     <div className="content">
                         {activeTab === 'instrument' && renderInstrument()}
@@ -351,49 +401,6 @@ const ChartSettingsModal = ({ onClose, mainSeriesId }) => {
                                 <p>Настройки раздела "{tabs.find(t => t.id === activeTab)?.label}"</p>
                             </div>
                         )}
-                    </div>
-                </div>
-
-                <div className="modal-footer">
-                    <div className="left" style={{ position: 'relative' }}>
-                        <button className="footer-btn" onClick={() => setShowTemplateMenu(!showTemplateMenu)}>
-                            Шаблон {'\u25BC'}
-                        </button>
-                        {showTemplateMenu && (
-                            <div className="template-menu" style={{
-                                position: 'absolute',
-                                bottom: '100%',
-                                left: 0,
-                                background: '#1e222d',
-                                border: '1px solid #2a2e39',
-                                borderRadius: '4px',
-                                padding: '4px 0',
-                                zIndex: 100,
-                                minWidth: '120px'
-                            }}>
-                                <button
-                                    onClick={() => applyTemplate('Late')}
-                                    style={{
-                                        display: 'block',
-                                        width: '100%',
-                                        textAlign: 'left',
-                                        background: 'none',
-                                        border: 'none',
-                                        color: '#d1d4dc',
-                                        padding: '8px 16px',
-                                        cursor: 'pointer',
-                                    }}
-                                    onMouseEnter={e => e.target.style.background = '#2a2e39'}
-                                    onMouseLeave={e => e.target.style.background = 'none'}
-                                >
-                                    Late
-                                </button>
-                            </div>
-                        )}
-                    </div>
-                    <div className="right">
-                        <button className="footer-btn" onClick={onClose}>Отмена</button>
-                        <button className="footer-btn primary" onClick={onClose}>Ок</button>
                     </div>
                 </div>
             </div>

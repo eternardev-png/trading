@@ -3,7 +3,6 @@ import { createChart, ColorType } from 'lightweight-charts'
 import { useLayoutStore } from '../stores/useLayoutStore'
 import SeriesMenu from './SeriesMenu'
 import DrawingsManager from './DrawingsManager'
-import ChartSettingsModal from './ChartSettingsModal'
 import './ChartPanel.scss' // Reusing existing styles
 
 // Helper to format volume
@@ -50,7 +49,6 @@ const ChartPane = forwardRef(({
     const [ohlc, setOhlc] = useState({})
     const [seriesVisible, setSeriesVisible] = useState({})
     const [showTimeframeMenu, setShowTimeframeMenu] = useState(false)
-    const [showSettings, setShowSettings] = useState(false)
 
     // Initialize visibility state based on configs
     useEffect(() => {
@@ -966,49 +964,8 @@ const ChartPane = forwardRef(({
                             return (
                                 <div className="chart-panel__ticker-row" key={config.id}>
                                     <div className="ticker-info">
-                                        <button className="symbol-search-btn" onClick={() => onSymbolSearchClick?.()}>
-                                            <span className="ticker-text">{mainInfo?.ticker}</span>
-                                        </button>
-                                        <button
-                                            className="chart-header-settings-btn"
-                                            onClick={() => setShowSettings(true)}
-                                            title="Настройки графика"
-                                            style={{ margin: '0 4px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '14px', lineHeight: 1 }}
-                                        >
-                                            {'\u2699\uFE0F'}
-                                        </button>
-                                        <div className="info-separator"></div>
-                                        <div className="timeframe-selector">
-                                            <button
-                                                className="timeframe-btn"
-                                                onClick={() => setShowTimeframeMenu(!showTimeframeMenu)}
-                                            >
-                                                {mainInfo?.timeframe || '1d'}
-                                            </button>
-                                            {showTimeframeMenu && (
-                                                <div className="timeframe-dropdown">
-                                                    {['5m', '10m', '15m', '30m', '45m', '1h', '2h', '3h', '4h', '1d', '1w', '1M', '3M', '6M', '12M'].map(tf => (
-                                                        <button
-                                                            key={tf}
-                                                            className={`tf-item ${mainInfo?.timeframe === tf ? 'active' : ''}`}
-                                                            onClick={() => {
-                                                                const { setGlobalTimeframe, updateSeriesSettings } = useLayoutStore.getState()
-                                                                setGlobalTimeframe(tf)
-                                                                // Update main series
-                                                                seriesConfigs.forEach(s => {
-                                                                    if (s.isMain || s.chartType === 'volume') {
-                                                                        updateSeriesSettings(s.id, { timeframe: tf })
-                                                                    }
-                                                                })
-                                                                setShowTimeframeMenu(false)
-                                                            }}
-                                                        >
-                                                            {tf}
-                                                        </button>
-                                                    ))}
-                                                </div>
-                                            )}
-                                        </div>
+                                        <span className="ticker-text" style={{ fontWeight: 'bold', marginRight: '8px' }}>{mainInfo?.ticker}</span>
+                                        <span className="timeframe-text" style={{ color: '#787b86' }}>{mainInfo?.timeframe || '1d'}</span>
                                         <span className="exchange">{mainInfo?.exchange || 'CRYPTO'}</span>
                                         <SeriesMenu
                                             name={mainInfo?.ticker}
@@ -1018,13 +975,10 @@ const ChartPane = forwardRef(({
                                             paneIndex={paneIndex}
                                             totalPanes={totalPanes}
                                             paneSeriesCount={seriesConfigs.length}
-                                            // Handle move logic via generic handler
                                             onMoveToPane={(dir) => onMoveSeries?.(config.id, dir)}
                                             onScaleChange={() => { }}
                                             onHide={() => hideSeries(config.id)}
                                         />
-                                        {/* Move Pane Controls (only on first series of the pane) */}
-                                        {/* Note: In Floor System, we assume moving the PANE via buttons on the first series is intuitive. */}
                                         <div className="move-controls" style={{ display: 'inline-flex', gap: '2px', marginLeft: '6px' }}>
                                             <button
                                                 className="action-btn"
@@ -1102,38 +1056,37 @@ const ChartPane = forwardRef(({
                         }
                     })}
                 </div>
-            )}
+            )
+            }
 
-            {/* Settings Modal */}
-            {showSettings && (
-                <ChartSettingsModal
-                    onClose={() => setShowSettings(false)}
-                    mainSeriesId={seriesConfigs.find(s => s.isMain)?.id || seriesConfigs[0]?.id}
-                />
-            )}
+
 
             <div ref={containerRef} className="chart-panel__chart" style={{ width: '100%', height: '100%' }} />
 
             {/* Watermark */}
-            {mainInfo && (
-                <div className="chart-pane__watermark" style={{ ...watermarkStyle, display: isTimeline ? 'none' : 'flex' }}>
-                    {mainInfo.ticker}
-                </div>
-            )}
+            {
+                mainInfo && (
+                    <div className="chart-pane__watermark" style={{ ...watermarkStyle, display: isTimeline ? 'none' : 'flex' }}>
+                        {mainInfo.ticker}
+                    </div>
+                )
+            }
 
             {/* Drawings Overlay */}
-            {!isTimeline && chartRef.current && (
-                <DrawingsManager
-                    chart={chartRef.current}
-                    seriesConfigs={seriesConfigs}
-                    seriesMap={seriesMap}
-                    width={containerRef.current?.clientWidth}
-                    height={containerRef.current?.clientHeight}
-                    paneId={id}
-                    magnetMode={magnetMode}
-                    drawingsVisible={drawingsVisible}
-                />
-            )}
+            {
+                !isTimeline && chartRef.current && (
+                    <DrawingsManager
+                        chart={chartRef.current}
+                        seriesConfigs={seriesConfigs}
+                        seriesMap={seriesMap}
+                        width={containerRef.current?.clientWidth}
+                        height={containerRef.current?.clientHeight}
+                        paneId={id}
+                        magnetMode={magnetMode}
+                        drawingsVisible={drawingsVisible}
+                    />
+                )
+            }
         </div>
     )
 })

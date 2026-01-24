@@ -77,6 +77,8 @@ export const useLayoutStore = create((set, get) => ({
     setGlobalTimeframe: (tf) => set({ globalTimeframe: tf }),
 
     // --- CHART CONTROLS STATE ---
+    showSettings: false,
+    setShowSettings: (visible) => set({ showSettings: visible }),
     magnetMode: false, // Magnet disabled by default
     setMagnetMode: (enabled) => set({ magnetMode: enabled }),
     drawingsVisible: true,
@@ -85,8 +87,8 @@ export const useLayoutStore = create((set, get) => ({
     // --- CHART APPEARANCE STATE ---
     chartAppearance: {
         backgroundType: 'gradient',
-        backgroundColor1: '#000000', // Late Default
-        backgroundColor2: '#010101', // Late Default
+        backgroundColor1: '#000000', // User Spec 0 0 0
+        backgroundColor2: '#020202', // User Spec 2 2 2
         gridLines: 'all',
         gridColor: '#2a2e39',
         crosshair: 'dashed',
@@ -104,8 +106,8 @@ export const useLayoutStore = create((set, get) => ({
 
     // --- INTERFACE APPEARANCE STATE ---
     interfaceAppearance: {
-        bgPrimary: '#131722',
-        bgSecondary: '#1e222d',
+        bgPrimary: '#000000', // User Spec 0 0 0
+        bgSecondary: '#181818', // User Spec 24 24 24
         textPrimary: '#d1d4dc',
         accentColor: '#2962ff'
     },

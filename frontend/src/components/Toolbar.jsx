@@ -25,7 +25,8 @@ function Toolbar() {
         addIndicator,
         addCompareLayer,
         activeStrategy,
-        strategies
+        strategies,
+        setShowSettings
     } = useLayoutStore()
 
     const [showLayoutMenu, setShowLayoutMenu] = useState(false)
@@ -129,7 +130,6 @@ function Toolbar() {
                         </svg>
                     </button>
 
-                    {/* Add Compare / etc buttons here later */}
                 </div>
 
                 <div className="toolbar__separator"></div>
@@ -233,6 +233,19 @@ function Toolbar() {
                     )}
                 </div>
 
+                {/* Settings Button (Top Right) */}
+                <button
+                    className="toolbar__settings-btn"
+                    onClick={() => setShowSettings(true)}
+                    title="Настройки графика"
+                    style={{ marginLeft: '8px' }}
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" width="20" height="20">
+                        <path stroke="currentColor" strokeWidth="1.5" d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" />
+                        <path stroke="currentColor" strokeWidth="1.5" d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1Z" />
+                    </svg>
+                </button>
+
                 {/* Right Panel Toggle */}
                 <button
                     className={`toolbar__btn-icon ${useLayoutStore(s => s.showRightPanel) ? 'active' : ''}`}
@@ -266,6 +279,8 @@ function Toolbar() {
                 isOpen={showStrategyBuilder}
                 onClose={() => setShowStrategyBuilder(false)}
             />
+
+
 
 
 
