@@ -39,13 +39,13 @@ def health_check():
     return {"status": "ok", "service": "AlgoResearch Lab Backend"}
 
 @app.get("/api/v1/data")
-def get_data(ticker: str, timeframe: str, source: str = 'auto', limit: int = 15000):
+def get_data(ticker: str, timeframe: str, source: str = 'auto', limit: int = 50000, to_timestamp: Optional[int] = None):
     """
     Fetch OHLC data for a ticker.
     """
     try:
-        print(f"Fetching data for {ticker} {timeframe} from {source} limit={limit}")
-        df = loader.fetch_data(ticker, timeframe, source=source, limit=limit)
+        print(f"Fetching data for {ticker} {timeframe} from {source} limit={limit} to={to_timestamp}")
+        df = loader.fetch_data(ticker, timeframe, source=source, limit=limit, to_timestamp=to_timestamp)
         
         if df.empty:
             raise HTTPException(status_code=404, detail="No data found")

@@ -140,7 +140,7 @@ const ChartPane = forwardRef(({
                 rightOffset: 10, // Buffer
             },
             watermark: {
-                visible: isFirstPane && !isTimeline,
+                visible: chartAppearance.watermark && !isTimeline,
                 fontSize: 64,
                 horzAlign: 'center',
                 vertAlign: 'center',
@@ -332,9 +332,14 @@ const ChartPane = forwardRef(({
                     color: chartAppearance.gridColor,
                     visible: !isTimeline && (chartAppearance.gridLines === 'all' || chartAppearance.gridLines === 'horz')
                 }
-            }, // Add other dynamic options here (watermark, margins, etc.)
+            },
+            watermark: {
+                visible: chartAppearance.watermark && !isTimeline,
+                text: mainInfo?.ticker || '',
+                color: 'rgba(255, 255, 255, 0.03)', // Ensure color persists
+            }
         })
-    }, [chartAppearance, isTimeline])
+    }, [chartAppearance, isTimeline, mainInfo?.ticker, isFirstPane])
 
     // Track widths for hover detection
     const scaleWidths = useRef({})
@@ -449,22 +454,42 @@ const ChartPane = forwardRef(({
             // Note: setData() resets the time scale by default. We counter this by restoring prevRange below.
             if (seriesData && seriesData.length > 0) {
                 if (config.chartType === 'candle') {
-                    // VALIDATION TO PREVENT CRASH
-                    const validData = seriesData.filter(d => {
-                        if (!d || !d.time) return false
-                        // Ensure we don't pass broken objects that confuse LWC date parser
-                        // If time is object, it must have year, month, day.
-                        if (typeof d.time === 'object') {
-                            return d.time.year !== undefined && d.time.month !== undefined && d.time.day !== undefined
-                        }
-                        return true
-                    }).map(d => ({
+                    // 1. Map & Validate Types
+                    let cleanData = seriesData.map(d => ({
                         time: d.time,
                         open: Number(d.open),
                         high: Number(d.high),
                         low: Number(d.low),
                         close: Number(d.close)
-                    }))
+                    })).filter(d => {
+                        // Check Falsy / Objects
+                        if (!d.time) return false
+                        if (typeof d.time === 'object') {
+                            if (d.time.year === undefined) return false
+                        }
+                        // Check Finite Numbers
+                        if (!Number.isFinite(d.open) || !Number.isFinite(d.high) ||
+                            !Number.isFinite(d.low) || !Number.isFinite(d.close)) return false
+                        return true
+                    })
+
+                    // 2. Sort by Time (Ascending)
+                    cleanData.sort((a, b) => {
+                        const ta = typeof a.time === 'object' ? (a.time.year * 10000 + a.time.month * 100 + a.time.day) : a.time
+                        const tb = typeof b.time === 'object' ? (b.time.year * 10000 + b.time.month * 100 + b.time.day) : b.time
+                        return ta - tb
+                    })
+
+                    // 3. Deduplicate (Keep first occurence)
+                    const uniqueMap = new Map()
+                    cleanData.forEach(item => {
+                        // Use string key for objects if needed, but usually primitive
+                        const key = typeof item.time === 'object' ? `${item.time.year}-${item.time.month}-${item.time.day}` : item.time
+                        if (!uniqueMap.has(key)) {
+                            uniqueMap.set(key, item)
+                        }
+                    })
+                    const validData = Array.from(uniqueMap.values())
 
                     series.setData(validData)
                     // ... (Marker logic omitted for brevity but can be restored)
@@ -482,10 +507,14 @@ const ChartPane = forwardRef(({
                         }))
                     }
                 } else if (config.chartType === 'line') {
-                    const lineData = seriesData.map(d => ({
-                        time: d.time,
-                        value: d.value !== undefined ? d.value : d.close
-                    }))
+                    const lineData = seriesData.filter(d => d && d.time).map(d => {
+                        const val = d.value !== undefined ? d.value : d.close
+                        return {
+                            time: d.time,
+                            value: Number(val)
+                        }
+                    }).filter(d => !isNaN(d.value))
+
                     series.setData(lineData)
                     const last = lineData[lineData.length - 1]
                     if (last) {
@@ -495,11 +524,16 @@ const ChartPane = forwardRef(({
                         }))
                     }
                 } else if (config.chartType === 'volume' || config.type === 'volume') {
-                    const volData = seriesData.map(d => ({
-                        time: d.time,
-                        value: d.volume,
-                        color: d.close >= d.open ? 'rgba(38, 166, 154, 0.5)' : 'rgba(239, 83, 80, 0.5)'
-                    }))
+                    const volData = seriesData.filter(d => d && d.time).map(d => {
+                        const vol = Number(d.volume)
+                        const open = Number(d.open)
+                        const close = Number(d.close)
+                        return {
+                            time: d.time,
+                            value: isNaN(vol) ? 0 : vol,
+                            color: (isNaN(open) || isNaN(close) || close >= open) ? 'rgba(38, 166, 154, 0.5)' : 'rgba(239, 83, 80, 0.5)'
+                        }
+                    })
                     series.setData(volData)
                     const last = seriesData[seriesData.length - 1]
                     if (last) {
@@ -583,22 +617,27 @@ const ChartPane = forwardRef(({
                     lineWidth: config.lineWidth,
                 }
                 if (config.chartType === 'candle') {
-                    if (config.upColor) opts.upColor = config.upColor
-                    if (config.downColor) opts.downColor = config.downColor
-                    if (config.borderVisible !== undefined) opts.borderVisible = config.borderVisible
-                    if (config.borderUpColor) opts.borderUpColor = config.borderUpColor
-                    if (config.borderDownColor) opts.borderDownColor = config.borderDownColor
-                    if (config.wickVisible !== undefined) opts.wickVisible = config.wickVisible
-                    if (config.wickUpColor) opts.wickUpColor = config.wickUpColor
-                    if (config.wickDownColor) opts.wickDownColor = config.wickDownColor
-                    if (config.bodyVisible !== undefined) {
-                        // LWC doesn't have bodyVisible. If false, set colors to transparent?
-                        // Actually it doesn't support 'bodyVisible'.
-                        // We simulate it by setting upColor/downColor to transparent if bodyVisible is false.
-                        if (config.bodyVisible === false) {
-                            opts.upColor = 'transparent'
-                            opts.downColor = 'transparent'
-                        }
+                    // Safe Defaults
+                    const upColor = config.upColor || '#26a69a'
+                    const downColor = config.downColor || '#ef5350'
+                    const borderUpColor = config.borderUpColor || upColor
+                    const borderDownColor = config.borderDownColor || downColor
+                    const wickUpColor = config.wickUpColor || upColor
+                    const wickDownColor = config.wickDownColor || downColor
+
+                    opts.upColor = upColor
+                    opts.downColor = downColor
+                    opts.borderVisible = config.borderVisible !== undefined ? config.borderVisible : true
+                    opts.borderUpColor = borderUpColor
+                    opts.borderDownColor = borderDownColor
+                    opts.wickVisible = config.wickVisible !== undefined ? config.wickVisible : true
+                    opts.wickUpColor = wickUpColor
+                    opts.wickDownColor = wickDownColor
+
+                    // Emulate bodyVisible
+                    if (config.bodyVisible === false) {
+                        opts.upColor = 'transparent'
+                        opts.downColor = 'transparent'
                     }
                 }
                 if (config.priceScaleId) opts.priceScaleId = config.priceScaleId
@@ -964,7 +1003,13 @@ const ChartPane = forwardRef(({
                             return (
                                 <div className="chart-panel__ticker-row" key={config.id}>
                                     <div className="ticker-info">
-                                        <span className="ticker-text" style={{ fontWeight: 'bold', marginRight: '8px' }}>{mainInfo?.ticker}</span>
+                                        <span
+                                            className="ticker-text"
+                                            style={{ fontWeight: 'bold', marginRight: '8px', cursor: 'pointer' }}
+                                            onClick={onSymbolSearchClick}
+                                        >
+                                            {mainInfo?.ticker}
+                                        </span>
                                         <span className="timeframe-text" style={{ color: '#787b86' }}>{mainInfo?.timeframe || '1d'}</span>
                                         <span className="exchange">{mainInfo?.exchange || 'CRYPTO'}</span>
                                         <SeriesMenu

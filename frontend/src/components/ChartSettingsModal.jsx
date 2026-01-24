@@ -195,6 +195,16 @@ const ChartSettingsModal = ({ onClose, mainSeriesId }) => {
                         <option value="UTC+3">(UTC+3) Москва</option>
                     </select>
                 </div>
+                <div className="form-row">
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                        <input
+                            type="checkbox"
+                            checked={chartAppearance.watermark !== false}
+                            onChange={e => setChartAppearance({ watermark: e.target.checked })}
+                        />
+                        Тикер на фоне
+                    </label>
+                </div>
             </div>
         </div>
     )

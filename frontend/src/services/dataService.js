@@ -16,9 +16,12 @@ function isStandardTicker(ticker) {
 /**
  * Fetches data for a single ticker from the API.
  */
-async function fetchRawData(ticker, timeframe) {
+async function fetchRawData(ticker, timeframe, toTimestamp) {
     try {
-        const url = `${API_BASE}/data?ticker=${encodeURIComponent(ticker)}&timeframe=${timeframe}`
+        let url = `${API_BASE}/data?ticker=${encodeURIComponent(ticker)}&timeframe=${timeframe}`
+        if (toTimestamp) {
+            url += `&to_timestamp=${toTimestamp}`
+        }
         const res = await fetch(url)
         if (!res.ok) return null
         const json = await res.json()
@@ -77,123 +80,18 @@ function alignData(seriesMap) {
 /**
  * Main function to get data for a ticker string (simple or math).
  */
-export async function resolveTickerData(expression, timeframe) {
-    // 1. Try fetching as-is
-    const rawArgs = await fetchRawData(expression, timeframe)
-    if (rawArgs) return rawArgs
+/**
+ * Main function to get data for a ticker string (simple or math).
+ * Delegates entirely to the Backend Synthetic Engine.
+ */
+export async function resolveTickerData(expression, timeframe, toTimestamp) {
+    // 1. Try fetching from backend (which covers both standard tickers and formulas)
+    const data = await fetchRawData(expression, timeframe, toTimestamp)
 
-    // 2. If failed, try parsing as math
-    // Extract logical tokens (tickers)
-    // Split by operators
-    const tokens = expression.split(/[\+\-\*\/\(\)\s]+/).filter(t => t && !/^\d+(\.\d+)?$/.test(t))
-
-    if (tokens.length === 0) return [] // No tickers? maybe just "2+2"? Not supported or return constant?
-
-    // Fetch Unique Tickers
-    const uniqueTickers = [...new Set(tokens)]
-    const dataMap = {}
-
-    for (const t of uniqueTickers) {
-        let d = await fetchRawData(t, timeframe)
-
-        // Fallback: Try appending /USDT or USDT if raw ticker fails
-        if (!d || d.length === 0) {
-            // Try "T/USDT"
-            d = await fetchRawData(`${t}/USDT`, timeframe)
-        }
-        if (!d || d.length === 0) {
-            // Try "TUSDT"
-            d = await fetchRawData(`${t}USDT`, timeframe)
-        }
-
-        if (!d || d.length === 0) {
-            console.warn(`Could not resolve component ticker: ${t}`)
-            return [] // Fail if any component missing
-        }
-        dataMap[t] = d
+    if (data && data.length > 0) {
+        return data
     }
 
-    // Align
-    const alignedRows = alignData(dataMap)
-
-    // Compute result for each row
-    const resultSeries = alignedRows.map(row => {
-        // Create an evaluation context
-        // Replace tickers in expression with actual values from 'row'
-        // We need to robustly replace.
-        // Sort tokens by length desc to avoid substring replacement of subsets
-        // e.g. "ETH" and "ETHUSDT" -> replace "ETHUSDT" first
-        const sortedTokens = [...uniqueTickers].sort((a, b) => b.length - a.length)
-
-        // We will calc OHLC separately? Or just Close?
-        // Let's do Close only for now to be safe.
-        // Construct code for eval?
-        // Safety: ensure expression contains only valid chars.
-
-        let expr = expression
-
-        // Replace tickers with values
-        // We can't simple replace string because "BTC" matches "BTCUSDT".
-        // Regex with boundaries? Tickes might contain / or - so \b is tricky.
-        // Better: iterate tokens relative to parsed positions?
-        // Or simple replace if we trust specific unique tickers.
-
-        // Safe Eval: new Function with args.
-        // Generate function with args matching tickers.
-        // func(BTC, ETH) { return BTC / ETH }
-
-        const args = sortedTokens
-        const funcBody = "return " + expression;
-        // Wait, expression "BTC/ETH" -> variable names "BTC/ETH" is invalid JS.
-        // We must map tickers to valid var names 'var0', 'var1'.
-
-    })
-
-    // ... Revisiting Eval Strategy ...
-
-    // Token extraction provided us uniqueTickers.
-    // Map each ticker to a varName 'v0', 'v1', etc.
-    const varMap = {}
-    uniqueTickers.forEach((t, i) => { varMap[t] = `v${i}` })
-
-    // Reconstruct expression with varNames
-    // We need to tokenize expression preserving operators, then map tokens.
-    // Regex split with capture groups includes separators.
-    const parts = expression.split(/([\+\-\*\/\(\)\s]+)/)
-    const newExprParts = parts.map(p => {
-        if (!p.trim()) return p
-        if (/^[\+\-\*\/\(\)]+$/.test(p)) return p
-        if (/^\d+(\.\d+)?$/.test(p)) return p
-        // It's a ticker
-        if (varMap[p] !== undefined) return varMap[p]
-        return p // Should catch known ones, else weird
-    })
-    const newExpr = newExprParts.join('')
-
-    // Create function
-    let calcFunc
-    try {
-        calcFunc = new Function(...Object.values(varMap), `return ${newExpr}`)
-    } catch (e) {
-        console.error("Invalid math expression", e)
-        return []
-    }
-
-    // Map rows
-    return alignedRows.map(row => {
-        const argValues = uniqueTickers.map(t => row[t].close) // Use Close price
-        let val
-        try {
-            val = calcFunc(...argValues)
-        } catch (e) { val = 0 }
-
-        return {
-            time: row.time,
-            open: val,
-            high: val,
-            low: val,
-            close: val,
-            volume: 0
-        }
-    })
+    console.warn(`Backend returned no data for: ${expression}`)
+    return []
 }

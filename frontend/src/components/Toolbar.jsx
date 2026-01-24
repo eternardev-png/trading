@@ -48,12 +48,12 @@ function Toolbar() {
             addCompareLayer(symbol)
         } else {
             // Update All Series in Main Pane (Candles + Volume) where ticker matches
-            // Actually, we usually want to update ALL series that were "linked" to main ticker.
-            // But simple approach: Update Main Series and Volume.
             if (mainPane) {
                 mainPane.series.forEach(s => {
                     if (s.isMain || s.chartType === 'volume' || s.priceScale === 'volume_scale') {
-                        updateSeriesSettings(s.id, { ticker: symbol })
+                        updateSeriesSettings(s.id, { ticker: symbol, title: symbol })
+                        // Critical: Clear data so ChartPanel knows to refetch
+                        useLayoutStore.getState().setSeriesData(s.id, [])
                     }
                 })
             }
@@ -72,19 +72,8 @@ function Toolbar() {
         setShowTimeframeMenu(false) // Close menu after selection
 
         // Update global timeframe in store
-        const { setGlobalTimeframe, panes, updateSeriesSettings } = useLayoutStore.getState()
-        setGlobalTimeframe(tf)
-
-        // Update all main series to trigger data refetch
-        const mainPane = panes.find(p => p.id === 'main-pane') || panes[0]
-        if (mainPane) {
-            mainPane.series.forEach(s => {
-                if (s.isMain || s.chartType === 'volume' || s.priceScale === 'volume_scale') {
-                    // Update timeframe which will trigger refetch in ChartPanel
-                    updateSeriesSettings(s.id, { timeframe: tf })
-                }
-            })
-        }
+        // Implementation now resides in store to handle data clearing correctly
+        useLayoutStore.getState().setChartTimeframe(tf)
     }
 
     // Close timeframe menu when clicking outside

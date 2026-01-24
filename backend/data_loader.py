@@ -55,9 +55,67 @@ class DataLoader:
 
         self.fred = Fred(api_key=self.fred_api_key) if self.fred_api_key else None
 
-    def fetch_data(self, ticker: str, timeframe: str, limit: int = 15000, source: str = 'auto') -> pd.DataFrame:
+    @property
+    def synthetic_engine(self):
+        if not hasattr(self, '_synthetic_engine'):
+            from synthetic_engine import SyntheticEngine
+            self._synthetic_engine = SyntheticEngine()
+        return self._synthetic_engine
+
+    def fetch_data(self, ticker: str, timeframe: str, limit: int = 50000, source: str = 'auto', to_timestamp: int = None) -> pd.DataFrame:
         try:
-            print(f"DEBUG: fetch_data called with ticker={ticker}, timeframe={timeframe}") 
+            print(f"DEBUG: fetch_data called with ticker='{ticker}', timeframe='{timeframe}'") 
+            
+            # --- 0. Synthetic Instrument Check ---
+            math_chars = ['+', '*', '(', ')', '-'] 
+            is_formula = any(op in ticker for op in math_chars)
+            if ' ' in ticker:
+                is_formula = True
+            
+            # Check for multiple slashes (e.g. pair vs formula)
+            slash_count = ticker.count('/')
+            
+            if is_formula or (slash_count > 1):
+                print(f"DEBUG: Detected Synthetic Formula: '{ticker}'")
+                engine = self.synthetic_engine
+                sub_tickers = engine.extract_tickers(ticker)
+                print(f"DEBUG: Extracted sub-tickers: {sub_tickers}")
+                
+                # RECURSION GUARD
+                if len(sub_tickers) == 1 and sub_tickers[0] == ticker:
+                    print(f"DEBUG: Recursion detected (extracted ticker same as input). Falling back to standard fetch.")
+                    # Pass through to standard logic below
+                else:
+                    data_map = {}
+                    for sub in sub_tickers:
+                        if sub == ticker: 
+                            print("DEBUG: Loop detected in sub-ticker. Skipping.")
+                            continue
+                            
+                        print(f"DEBUG: Fetching component: '{sub}'")
+                        df_sub = self.fetch_data(sub, timeframe, limit=limit, source=source, to_timestamp=to_timestamp)
+                        
+                        if not df_sub.empty:
+                            data_map[sub] = df_sub
+                            print(f"DEBUG: Component '{sub}' loaded. Rows: {len(df_sub)}")
+                        else:
+                            print(f"DEBUG: Warning - No data for component '{sub}'")
+                    
+                    if not data_map:
+                        print("DEBUG: No component data found (data_map empty). Returning empty.")
+                        return pd.DataFrame()
+                        
+                    print(f"DEBUG: Data map populated. Keys: {list(data_map.keys())}. Calculating...")
+                    df_calc = engine.calculate(ticker, data_map)
+                    
+                    if not df_calc.empty:
+                        print(f"DEBUG: Calculation complete. Rows: {len(df_calc)}")
+                        print(f"DEBUG: Head: {df_calc.head(1).to_dict()}")
+                        return df_calc
+                    else:
+                        print("DEBUG: Calculation returned empty.")
+                        return pd.DataFrame()
+
             
             # 1. Try TradingView (Best quality)
             # Check availability of Interval and TVLoader
@@ -75,7 +133,21 @@ class DataLoader:
             if '/' in ticker: 
                 try:
                     print(f"DEBUG: Trying CCXT for {ticker}") 
-                    df = self._fetch_ccxt(ticker, timeframe, limit)
+                    # If to_timestamp is set, we need to calculate 'since' differently logic is inside _fetch_ccxt?
+                    # No, _fetch_ccxt takes 'since'.
+                    # If to_timestamp is provided, 'since' = to_timestamp - (limit * duration).
+                    
+                    ccxt_since = None
+                    if to_timestamp:
+                        # Convert to ms
+                        to_ms = to_timestamp * 1000
+                        duration_sec = self.ccxt_exchange.parse_timeframe(timeframe)
+                        duration_ms = duration_sec * 1000
+                        ccxt_since = to_ms - (limit * duration_ms)
+                        # Ensure positive
+                        if ccxt_since < 0: ccxt_since = 0
+                    
+                    df = self._fetch_ccxt(ticker, timeframe, limit, since=ccxt_since)
                     if not df.empty:
                          return df
                 except Exception as e:
@@ -88,12 +160,18 @@ class DataLoader:
                 if ticker == 'BTC/USDT': yf_symbol = 'BTC-USD' 
                 
                 print(f"DEBUG: Trying yfinance for {yf_symbol} {timeframe}") 
-                df = self._fetch_yfinance(yf_symbol, timeframe)
+                
+                end_date = None
+                if to_timestamp:
+                    end_date = datetime.datetime.fromtimestamp(to_timestamp).strftime('%Y-%m-%d')
+
+                df = self._fetch_yfinance(yf_symbol, timeframe, end_date=end_date)
                 if not df.empty:
                     return df
             except Exception as e:
                 print(f"YF Error: {e}")
 
+            print(f"DEBUG: All sources failed for {ticker}")
             return pd.DataFrame()
 
         except Exception as e:
@@ -166,7 +244,7 @@ class DataLoader:
                     break
                 
                 # Safety break for massive requests or infinite loops
-                if len(all_ohlcv) > 20000: 
+                if len(all_ohlcv) > 50000: 
                     print("Hit safety limit in CCXT fetch.")
                     break
                     
@@ -186,7 +264,7 @@ class DataLoader:
         df.drop(columns=['timestamp'], inplace=True)
         return df
 
-    def _fetch_yfinance(self, symbol: str, timeframe: str, start_date=None) -> pd.DataFrame:
+    def _fetch_yfinance(self, symbol: str, timeframe: str, start_date=None, end_date=None) -> pd.DataFrame:
         # Map 1w -> 1wk for yfinance
         yf_timeframe = '1wk' if timeframe == '1w' else timeframe
 
@@ -203,6 +281,14 @@ class DataLoader:
         if start_date:
             print(f"DEBUG: yf.download {symbol} interval={yf_timeframe} start={start_date}")
             df = yf.download(symbol, start=start_date, interval=yf_timeframe, progress=False, auto_adjust=True)
+        elif end_date:
+             # Calculate start based on period manually if only end is given?
+             # Auto-period doesn't work well with specific end.
+             # We should probably define a start if end is given.
+             # Assume 'limit' is large, so start = end - 5 years?
+             # Let's try passing period='max' or '5y' with end_date. yfinance might support it.
+             print(f"DEBUG: yf.download {symbol} interval={yf_timeframe} end={end_date} period=5y")
+             df = yf.download(symbol, end=end_date, period='5y', interval=yf_timeframe, progress=False, auto_adjust=True)
         else:
             period = period_map.get(timeframe, '5y') # Default to 5y
             print(f"DEBUG: yf.download {symbol} interval={yf_timeframe} period={period}")

@@ -204,11 +204,41 @@ export const useLayoutStore = create((set, get) => ({
     }),
 
     // Helpers for Toolbar compatibility
-    setChartTimeframe: (tf) => {
-        // No-op or store global timeframe? 
-        // Assuming existing components handle timeframe state or we add it here.
-        // Let's add it for compatibility
-    },
+    // Helpers for Toolbar compatibility
+    setChartTimeframe: (tf) => set((state) => {
+        // 1. Update Global State
+        // 2. Clear Data for all "Main" series to force refetch
+        // 3. Update 'timeframe' prop in series settings
+
+        const newPanes = state.panes.map(pane => ({
+            ...pane,
+            series: pane.series.map(s => {
+                // Determine if this series should react to global timeframe
+                // Usually Main Series, Volume, or standard overlay.
+                // Computed indicators might re-calc automatically if they depend on main series data?
+                // But for now, let's target data-fetching series.
+
+                const shouldUpdate =
+                    s.isMain ||
+                    s.chartType === 'volume' ||
+                    s.priceScale === 'volume_scale' ||
+                    s.id === 'main-series'
+
+                if (shouldUpdate) {
+                    return { ...s, timeframe: tf, data: [] } // Clear data to force refetch
+                }
+                return s
+            })
+        }))
+
+        return {
+            globalTimeframe: tf,
+            panes: newPanes
+        }
+    }),
+
+    // Alias for BottomTimebar
+    setZoomRequest: (tf) => get().setChartTimeframe(tf),
 
     // Добавление новой серии (индикатора или графика)
     addSeries: (seriesData, targetPaneId = null) => set((state) => {
@@ -338,15 +368,38 @@ export const useLayoutStore = create((set, get) => ({
     removeSeries: (seriesId) => set((state) => {
         let newPanes = [...state.panes]
 
+        // Safety: Count total series
+        const totalSeries = newPanes.reduce((acc, p) => acc + p.series.length, 0)
+        if (totalSeries <= 1) {
+            console.warn("Cannot remove the last series.")
+            return state
+        }
+
         // Удаляем серию
-        newPanes.forEach(pane => {
-            pane.series = pane.series.filter(s => s.id !== seriesId)
-        })
+        newPanes = newPanes.map(pane => ({
+            ...pane,
+            series: pane.series.filter(s => s.id !== seriesId)
+        }))
 
         // Удаляем пустые панели (кроме, возможно, главной, если нужно)
         // Но обычно в TV если удалить всё, панель исчезает. Оставим защиту для главной, если она пустая?
         // Пока удаляем только пустые дополнительные панели.
         newPanes = newPanes.filter(p => p.series.length > 0 || p.id === 'main-pane')
+
+        // If main-pane is empty but we have other panes, maybe promote another pane?
+        // Or if main-pane is preserved but empty, it renders nothing.
+        // Let's rely on standard filter. 
+        // If main-pane is empty, remove it IF there are other panes.
+        // If it's the only pane, we blocked removal above.
+
+        // Re-filter to remove empty main-pane if we have meaningful content elsewhere?
+        // Actually simplest: remove ANY empty pane.
+        newPanes = newPanes.filter(p => p.series.length > 0)
+
+        // Safety fallback: If we somehow deleted everything (should be caught by totalSeries check, but race conditions?)
+        if (newPanes.length === 0) {
+            return state // Revert
+        }
 
         return { panes: newPanes }
     }),

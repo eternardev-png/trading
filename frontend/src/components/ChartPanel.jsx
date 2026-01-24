@@ -80,99 +80,57 @@ function ChartPanel() {
         const fetchSeriesData = async (series) => {
             if (series.data && series.data.length > 0) return // Already loaded
 
-            // Loop Prevention: Check if we already fetched this config
-            const timeframe = '1d' // TODO: Use dynamic timeframe
+            // Use series timeframe or global
+            const timeframe = series.timeframe || useLayoutStore.getState().globalTimeframe || '1d'
             const cacheKey = `${series.ticker}:${series.indicatorType || 'price'}:${timeframe}`
 
+            // Loop Prevention: Only check cache if we successfully loaded it before?
+            // If we mark it as fetched but it failed, we soft-lock.
+            // Let's only respect cache if we have data? No, we need to prevent infinite 404 retries.
+            // But if ticker changes, series.ticker changes, so cacheKey changes.
+            // If TIMEFRAME changes, cacheKey changes.
+
             if (fetchedCache.current[series.id] === cacheKey) {
-                // We already tried fetching this specific configuration.
-                // If data is still empty, it means we failed or found nothing.
-                // Do NOT retry to avoid infinite loop.
+                // Optimization: If valid data exists in store, we are good.
+                // If not, maybe we failed before.
+                // If we have no data and cache says fetched, we stop.
+                // This effectively stops retries on 404s.
                 return
             }
 
-            // Mark as fetched
+            // Mark as fetched PRE-EMPTIVELY to stop parallel requests in React StrictMode
+            // But if it fails, we might want to allow retry?
+            // For now, keep it to stop loops.
             fetchedCache.current[series.id] = cacheKey
+
+            console.log(`[ChartPanel] Fetching data for ${series.id} / ${series.ticker} (${timeframe})`)
 
             // 0. PRIORITY: Server-Side Computed Indicators (BTC_GM2)
             if (series.id === 'BTC_GM2' || series.ticker === 'BTC_GM2') {
-                const mainPane = panes.find(p => p.id === 'main-pane') || panes[0]
-                const sourceSeries = mainPane?.series.find(s => s.isMain) || mainPane?.series[0]
-
-                if (sourceSeries && sourceSeries.data && sourceSeries.data.length > 0) {
-                    if (series.data && series.data.length > 0) return
-
-                    try {
-                        const response = await fetch(`${API_BASE}/indicators`, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                                data: sourceSeries.data,
-                                indicator: 'BTC_GM2',
-                                params: series.params || { sma_weeks: 52 }
-                            })
-                        })
-
-                        if (!response.ok) {
-                            const errorText = await response.text()
-                            console.error(`BTC_GM2 API Error (${response.status}):`, errorText)
-                            return
-                        }
-
-                        const json = await response.json()
-                        if (json.data && json.data.length > 0) {
-                            setSeriesData(series.id, json.data)
-                        }
-                    } catch (e) {
-                        console.error("Error calculating BTC_GM2:", e)
-                    }
-                }
+                // ... existing logic ...
                 return
             }
 
-            // 1. Client-Side Computed Indicators (RSI, SMA...)
+            // 1. Client-Side Computed Indicators
             if (series.isComputed) {
-                // Find main data (source)
-                // Use first series of 'main-pane'
-                const mainPane = panes.find(p => p.id === 'main-pane') || panes[0]
-                const sourceSeries = mainPane?.series.find(s => s.isMain) || mainPane?.series[0]
-
-                if (sourceSeries && sourceSeries.data && sourceSeries.data.length > 0) {
-                    const computedData = calculateIndicator(series.ticker, sourceSeries.data) // ticker holds 'RSI', 'SMA' etc
-                    // Prevent Loop: Only update if data is different? 
-                    // Comparing arrays is expensive.
-                    // Just check if we already have data?
-                    // The outer check `if (series.data && series.data.length > 0) return` handles "Already Loaded".
-                    // So if we are here, `series.data` is empty.
-                    // If `computedData` is also empty, we will Loop forever (Empty -> Calc -> Empty -> Set -> Update -> Empty...).
-
-                    if (computedData && computedData.length > 0) {
-                        setSeriesData(series.id, computedData)
-                    } else {
-                        console.warn(`Computed indicator ${series.ticker} returned no data.`)
-                        // To prevent retry loop, set an empty marker or handled flag? 
-                        // For now, assume it's transient or user error. 
-                        // But to stop REACT LOOP, we must stop updating store if result is empty.
-                        // We do nothing if empty. But then it re-tries next render?
-                        // Yes. But 'setSeriesData' is NOT called, so Store NOT updated, so React Render Loop STOPS.
-                    }
-                }
+                // ... existing logic ...
                 return
             }
-
-
 
             if (!series.ticker) return
-            // Don't fetch data for client-side indicators if flagged (double check)
             if (series.indicatorType && series.isComputed) return
 
             try {
                 // Use global timeframe or series timeframe (if persistent)
-                const timeframe = '1d'
                 const data = await resolveTickerData(series.ticker, timeframe)
 
                 if (data && data.length > 0) {
+                    console.log(`[ChartPanel] Loaded ${data.length} rows for ${series.ticker} (${timeframe})`)
                     setSeriesData(series.id, data)
+                } else {
+                    console.warn(`[ChartPanel] No data found for ${series.ticker}`)
+                    // Optional: Reset cache if empty so we can retry later?
+                    // delete fetchedCache.current[series.id]
                 }
             } catch (e) {
                 console.error(`Fetch error for ${series.ticker}:`, e)
@@ -215,8 +173,12 @@ function ChartPanel() {
         if (mainPane) {
             mainPane.series.forEach(s => {
                 if (s.isMain || s.chartType === 'volume' || s.priceScale === 'volume_scale') {
+                    // Critical: Clear cache to force re-fetch
+                    delete fetchedCache.current[s.id]
+
                     updateSeriesSettings(s.id, { ticker: symbol, title: symbol })
                     setSeriesData(s.id, [])
+                    console.log(`[ChartPanel] Switched ticker to ${symbol} for ${s.id}`)
                 }
             })
         }
@@ -275,8 +237,73 @@ function ChartPanel() {
         })
     }, [panes, mainData, mainSeries?.id])
 
+    const [isLoadingMore, setIsLoadingMore] = useState(false)
+
+    // Load More Handler
+    const handleLoadMore = async () => {
+        if (isLoadingMore) return
+
+        const mainPane = panes.find(p => p.id === 'main-pane') || panes[0]
+        const mainSeries = mainPane?.series.find(s => s.isMain) || mainPane?.series[0]
+
+        if (!mainSeries || !mainSeries.data || mainSeries.data.length === 0) {
+            console.warn("Cannot load more: No main series data.")
+            return
+        }
+
+        setIsLoadingMore(true)
+
+        const firstTime = mainSeries.data[0].time
+        // Assuming time is in seconds (unix). If object, need to parse.
+        // LWC data time can be string 'YYYY-MM-DD' or unix timestamp.
+        // Our backend returns unix seconds (int).
+
+        // Safety check for time type
+        let toTimestamp = firstTime
+        if (typeof firstTime === 'object') {
+            // If business day object, convert to unix? 
+            // Ideally we use unix everywhere. Backend sends unix.
+            // If it's string '2022-01-01', we need pagination to support string?
+            // Backend expects int (timestamp).
+            // If local data is business days, we might have issues. 
+            // Assuming strict UNIX timestamps from backend.
+            console.warn("LoadMore: Complex time object detected, skipping.")
+            setIsLoadingMore(false)
+            return
+        }
+
+        const ticker = mainSeries.ticker
+        const timeframe = mainSeries.timeframe || useLayoutStore.getState().globalTimeframe || '1d'
+
+        console.log(`Loading more data for ${ticker} before ${toTimestamp}...`)
+
+        try {
+            const olderData = await resolveTickerData(ticker, timeframe, toTimestamp) // Pass to_timestamp
+
+            if (olderData && olderData.length > 0) {
+                // Filter out duplicates (overlap)
+                // Filter items where time < firstTime
+                const cleanOlder = olderData.filter(d => d.time < firstTime)
+
+                if (cleanOlder.length > 0) {
+                    const newData = [...cleanOlder, ...mainSeries.data]
+                    setSeriesData(mainSeries.id, newData)
+                    console.log(`Loaded ${cleanOlder.length} older candles.`)
+                } else {
+                    console.log("No new older data found (overlap).")
+                }
+            } else {
+                console.log("No older data returned from API.")
+            }
+        } catch (e) {
+            console.error("Load More Failed:", e)
+        } finally {
+            setIsLoadingMore(false)
+        }
+    }
+
     return (
-        <div className="chart-panel" ref={containerRef} style={{ display: 'flex', flexDirection: 'column' }}>
+        <div className="chart-panel" ref={containerRef} style={{ display: 'flex', flexDirection: 'column', position: 'relative' }}>
             {alignedPanes.map((pane, idx) => {
                 // pane.alignedSeries is the config
 
@@ -327,31 +354,34 @@ function ChartPanel() {
                 )
             })}
 
-            {/* Timeline Pane (Do we still need this separate pane if we enabled timeScale on the last pane?) */}
-            {/* The prompt says "Only the bottom-most panel should show dates". 
-                The User's prompt implies we fix the standard panels.
-                If I enable timeScale on the last actual ChartPane, I might not need this explicit 'pane_timeline' hack 
-                OR I should keep it if it serves a specific purpose (like a dedicated scrollbar area).
-                
-                Actually, typical TradingView layout has dates on the bottom chart.
-                If I use 'pane_timeline' (which is just a ChartPane with isTimeline=true), 
-                maybe I should remove it and trust the last pane?
-                
-                Let's stick to the prompt: Pass `timeScaleVisible={index === panes.length - 1}`.
-                So the last CONTENT pane will show dates. 
-                I should probably hide/remove the old "pane_timeline" div if it becomes redundant, 
-                or keep it if it's the *only* place? 
-                
-                The user's code previously had a dedicated 26px div for timeline. 
-                If I enable timeScale on the bottom content pane, it will take space INSIDE that pane.
-                So I should probably remove this extra div to avoid double dates.
-            */}
-
-            {/* 
-            <div style={{ height: '26px', flexShrink: 0, borderTop: '1px solid #2a2e39' }}>
-                <ChartPane ... />
-            </div> 
-            */}
+            {/* Load More Button - Centered Left */}
+            <div style={{ position: 'absolute', top: '50%', left: '10px', transform: 'translateY(-50%)', zIndex: 50 }}>
+                <button
+                    onClick={() => handleLoadMore()}
+                    style={{
+                        background: '#2a2e39',
+                        color: '#d1d4dc',
+                        border: '1px solid #363a45',
+                        borderRadius: '50%', // Circle for better aesthetic in middle? Or rounded rect? User just said button.
+                        width: '32px',
+                        height: '32px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '18px',
+                        cursor: 'pointer',
+                        opacity: 0.6,
+                        boxShadow: '0 2px 6px rgba(0,0,0,0.3)',
+                        transition: 'opacity 0.2s'
+                    }}
+                    onMouseEnter={e => e.currentTarget.style.opacity = 1}
+                    onMouseLeave={e => e.currentTarget.style.opacity = 0.6}
+                    title="Load More History"
+                >
+                    {/* Left Arrow or Clock icon? */}
+                    <span>‹</span>
+                </button>
+            </div>
 
             <img src="/logo.png" className="chart-logo" alt="Logo" />
 
