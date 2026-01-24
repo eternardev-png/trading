@@ -125,15 +125,6 @@ const ChartSettingsModal = ({ onClose, mainSeriesId }) => {
                     <label>
                         <input
                             type="checkbox"
-                            checked={s.candleStyle?.bodyVisible !== false && s.visible !== false} // Assuming specific prop or generic
-                            // LightWeight Charts 'candle' options: upColor, downColor, borderVisible, wickVisible
-                            // Our store series object might just store 'color' or flattened options.
-                            // Let's assume we store them as top-level or 'candleStyle' object?
-                            // Looking at store init: colors are top level.
-                            // Let's map 'borderVisible' etc.
-                            checked={s.borderVisible !== false} // wait, body is usually implied always visible unless custom?
-                            // LWC: 'wickVisible', 'borderVisible'. Body is always visible? No, can be transparent.
-                            // Let's use custom props we will sync.
                             checked={s.bodyVisible !== false}
                             onChange={e => updateSeries('bodyVisible', e.target.checked)}
                         />
@@ -251,7 +242,7 @@ const ChartSettingsModal = ({ onClose, mainSeriesId }) => {
                     <span>Текст</span>
                     <div className="combo-input">
                         <input type="color" value="#787b86" disabled />
-                        <select value={appearance.scaleText} onChange={e => setAppearance({ ...appearance, scaleText: e.target.value })}>
+                        <select value={appearance.scaleText} onChange={e => setChartAppearance({ scaleText: e.target.value })}>
                             <option value="12">12</option>
                             <option value="14">14</option>
                         </select>
@@ -268,21 +259,21 @@ const ChartSettingsModal = ({ onClose, mainSeriesId }) => {
                 <div className="form-row">
                     <span>Сверху</span>
                     <div className="input-with-unit">
-                        <input type="number" value={appearance.marginTop} onChange={e => setAppearance({ ...appearance, marginTop: e.target.value })} />
+                        <input type="number" value={appearance.marginTop} onChange={e => setChartAppearance({ marginTop: e.target.value })} />
                         <span>%</span>
                     </div>
                 </div>
                 <div className="form-row">
                     <span>Снизу</span>
                     <div className="input-with-unit">
-                        <input type="number" value={appearance.marginBottom} onChange={e => setAppearance({ ...appearance, marginBottom: e.target.value })} />
+                        <input type="number" value={appearance.marginBottom} onChange={e => setChartAppearance({ marginBottom: e.target.value })} />
                         <span>%</span>
                     </div>
                 </div>
                 <div className="form-row">
                     <span>Справа</span>
                     <div className="input-with-unit">
-                        <input type="number" value={appearance.marginRight} onChange={e => setAppearance({ ...appearance, marginRight: e.target.value })} />
+                        <input type="number" value={appearance.marginRight} onChange={e => setChartAppearance({ marginRight: e.target.value })} />
                         <span>бары</span>
                     </div>
                 </div>

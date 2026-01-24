@@ -3,7 +3,7 @@ import { createChart, ColorType } from 'lightweight-charts'
 import { useLayoutStore } from '../stores/useLayoutStore'
 import SeriesMenu from './SeriesMenu'
 import DrawingsManager from './DrawingsManager'
-import DrawingsManager from './DrawingsManager'
+import ChartSettingsModal from './ChartSettingsModal'
 import './ChartPanel.scss' // Reusing existing styles
 
 // Helper to format volume
@@ -50,7 +50,7 @@ const ChartPane = forwardRef(({
     const [ohlc, setOhlc] = useState({})
     const [seriesVisible, setSeriesVisible] = useState({})
     const [showTimeframeMenu, setShowTimeframeMenu] = useState(false)
-    const [showTimeframeMenu, setShowTimeframeMenu] = useState(false)
+    const [showSettings, setShowSettings] = useState(false)
 
     // Initialize visibility state based on configs
     useEffect(() => {
@@ -969,6 +969,14 @@ const ChartPane = forwardRef(({
                                         <button className="symbol-search-btn" onClick={() => onSymbolSearchClick?.()}>
                                             <span className="ticker-text">{mainInfo?.ticker}</span>
                                         </button>
+                                        <button
+                                            className="chart-header-settings-btn"
+                                            onClick={() => setShowSettings(true)}
+                                            title="Настройки графика"
+                                            style={{ margin: '0 4px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '14px', lineHeight: 1 }}
+                                        >
+                                            {'\u2699\uFE0F'}
+                                        </button>
                                         <div className="info-separator"></div>
                                         <div className="timeframe-selector">
                                             <button
@@ -1090,45 +1098,43 @@ const ChartPane = forwardRef(({
                                         </div>
                                     </div>
                                 </div>
-                                </div>
-            )
-            }
+                            )
+                        }
                     })}
-        </div>
-    )
-}
+                </div>
+            )}
+
+            {/* Settings Modal */}
+            {showSettings && (
+                <ChartSettingsModal
+                    onClose={() => setShowSettings(false)}
+                    mainSeriesId={seriesConfigs.find(s => s.isMain)?.id || seriesConfigs[0]?.id}
+                />
+            )}
 
             <div ref={containerRef} className="chart-panel__chart" style={{ width: '100%', height: '100%' }} />
 
-            {/* Chart Controls - Top Right (Settings Only) */ }
-            {/* Chart Controls - Floating Top Right Settings (REMOVED) */ }
-            {/* Moved to Header Row */ }
+            {/* Watermark */}
+            {mainInfo && (
+                <div className="chart-pane__watermark" style={{ ...watermarkStyle, display: isTimeline ? 'none' : 'flex' }}>
+                    {mainInfo.ticker}
+                </div>
+            )}
 
-
-
-{
-        mainInfo && (
-        <div className="chart-pane__watermark" style={{ ...watermarkStyle, display: isTimeline ? 'none' : 'flex' }}>
-            {mainInfo.ticker}
+            {/* Drawings Overlay */}
+            {!isTimeline && chartRef.current && (
+                <DrawingsManager
+                    chart={chartRef.current}
+                    seriesConfigs={seriesConfigs}
+                    seriesMap={seriesMap}
+                    width={containerRef.current?.clientWidth}
+                    height={containerRef.current?.clientHeight}
+                    paneId={id}
+                    magnetMode={magnetMode}
+                    drawingsVisible={drawingsVisible}
+                />
+            )}
         </div>
-    )
-}
-{/* Drawings Overlay */ }
-{
-    !isTimeline && chartRef.current && (
-        <DrawingsManager
-            chart={chartRef.current}
-            seriesConfigs={seriesConfigs} // Pass config to Dynamic finder
-            seriesMap={seriesMap} // Pass Ref for API access
-            width={containerRef.current?.clientWidth}
-            height={containerRef.current?.clientHeight}
-            paneId={id}
-            magnetMode={magnetMode}
-            drawingsVisible={drawingsVisible}
-        />
-    )
-}
-        </div >
     )
 })
 

@@ -36,6 +36,7 @@ function ChartPanel() {
     const paneRefs = useRef({}) // { [paneId]: { chart, id } }
     const isSyncing = useRef(false)
     const [readyCharts, setReadyCharts] = useState(0)
+    const fetchedCache = useRef({}) // { [seriesId]: "ticker:timeframe" }
 
 
     // Sync Panes (Scale Sync)
@@ -77,6 +78,20 @@ function ChartPanel() {
     useEffect(() => {
         const fetchSeriesData = async (series) => {
             if (series.data && series.data.length > 0) return // Already loaded
+
+            // Loop Prevention: Check if we already fetched this config
+            const timeframe = '1d' // TODO: Use dynamic timeframe
+            const cacheKey = `${series.ticker}:${series.indicatorType || 'price'}:${timeframe}`
+
+            if (fetchedCache.current[series.id] === cacheKey) {
+                // We already tried fetching this specific configuration.
+                // If data is still empty, it means we failed or found nothing.
+                // Do NOT retry to avoid infinite loop.
+                return
+            }
+
+            // Mark as fetched
+            fetchedCache.current[series.id] = cacheKey
 
             // 0. PRIORITY: Server-Side Computed Indicators (BTC_GM2)
             if (series.id === 'BTC_GM2' || series.ticker === 'BTC_GM2') {
