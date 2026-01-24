@@ -4,6 +4,7 @@ import LayersPanel from './LayersPanel'
 import ChartPane from './ChartPane'
 import SymbolSearch from './SymbolSearch'
 import { alignSeriesData } from '../utils/dataAligner'
+import { mergeAndSortData } from '../utils/chartUtils' // Import safe merger
 import { calculateIndicator } from '../utils/indicators'
 import { resolveTickerData } from '../services/dataService'
 import './ChartPanel.scss'
@@ -281,16 +282,16 @@ function ChartPanel() {
             const olderData = await resolveTickerData(ticker, timeframe, toTimestamp, 1000) // Pass to_timestamp and limit 1000
 
             if (olderData && olderData.length > 0) {
-                // Filter out duplicates (overlap)
-                // Filter items where time < firstTime
-                const cleanOlder = olderData.filter(d => d.time < firstTime)
+                // SAFE MERGE: Deduplicate, Sort, Validate
+                // This prevents "Value is null" crashes by ensuring unique times and strictly valid data
+                const newData = mergeAndSortData(mainSeries.data, olderData)
 
-                if (cleanOlder.length > 0) {
-                    const newData = [...cleanOlder, ...mainSeries.data]
+                // Compare lengths to see if we actually added anything useful
+                if (newData.length > mainSeries.data.length) {
                     setSeriesData(mainSeries.id, newData)
-                    console.log(`Loaded ${cleanOlder.length} older candles.`)
+                    console.log(`Merged history. Total: ${newData.length} (was ${mainSeries.data.length})`)
                 } else {
-                    console.log("No new older data found (overlap).")
+                    console.log("No new unique data merged.")
                 }
             } else {
                 console.log("No older data returned from API.")
