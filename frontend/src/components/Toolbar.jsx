@@ -3,6 +3,7 @@ import { useLayoutStore, LAYOUTS } from '../stores/useLayoutStore'
 import SymbolSearch from './SymbolSearch'
 import IndicatorsMenu from './IndicatorsMenu'
 import StrategyBuilder from './StrategyBuilder'
+import ChartSettingsModal from './ChartSettingsModal'
 import './Toolbar.scss'
 
 const TIMEFRAMES = ['5m', '10m', '15m', '30m', '45m', '1h', '2h', '3h', '4h', '1d', '1w', '1M', '3M', '6M', '12M']
@@ -35,6 +36,7 @@ function Toolbar() {
     const [showStrategyBuilder, setShowStrategyBuilder] = useState(false)
     const [showTimeframeMenu, setShowTimeframeMenu] = useState(false)
     const [activeTimeframe, setActiveTimeframe] = useState('1d')
+    const [showSettings, setShowSettings] = useState(false)
 
     // Main Series Logic
     // Find the series marked as 'main' or fallback to first series of first pane
@@ -243,6 +245,15 @@ function Toolbar() {
                         <path stroke="currentColor" strokeWidth="1.2" d="M19 4V24M19 9H24M19 14H24M19 19H24M4 4H19V24H4V4Z" />
                     </svg>
                 </button>
+
+                {/* Settings Button (Global) */}
+                <button
+                    className="toolbar__btn-icon"
+                    onClick={() => setShowSettings(true)}
+                    title="Настройки графика"
+                >
+                    {'\u2699\uFE0F'}
+                </button>
             </div>
 
             <SymbolSearch
@@ -265,6 +276,15 @@ function Toolbar() {
                 isOpen={showStrategyBuilder}
                 onClose={() => setShowStrategyBuilder(false)}
             />
+
+
+            {/* Settings Modal - Connected to Main Series */}
+            {showSettings && (
+                <ChartSettingsModal
+                    onClose={() => setShowSettings(false)}
+                    mainSeriesId={mainSeries?.id} // Pass main series for "Instrument" tab binding
+                />
+            )}
         </div>
     )
 }

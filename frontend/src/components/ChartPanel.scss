@@ -480,4 +480,31 @@
             height: 20px;
         }
     }
+
+    // New Floating Settings Button (Top-Right over Scale)
+    .chart-floating-settings-btn {
+        position: absolute;
+        top: 60px; // Lower it down so it doesn't overlap with header/timeframe
+        right: 10px; // Floating near the scale
+        z-index: 50;
+        width: 34px;
+        height: 34px;
+        background: rgba(30, 34, 45, 0.6); // Semi-transparent dark
+        border: 1px solid #2a2e39;
+        border-radius: 6px;
+        color: #787b86;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 18px;
+        transition: all 0.2s;
+        backdrop-filter: blur(2px);
+
+        &:hover {
+            background: #2a2e39;
+            color: #d1d4dc;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+        }
+    }
 }

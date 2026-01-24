@@ -3,6 +3,7 @@ import { createChart, ColorType } from 'lightweight-charts'
 import { useLayoutStore } from '../stores/useLayoutStore'
 import SeriesMenu from './SeriesMenu'
 import DrawingsManager from './DrawingsManager'
+import DrawingsManager from './DrawingsManager'
 import './ChartPanel.scss' // Reusing existing styles
 
 // Helper to format volume
@@ -44,11 +45,12 @@ const ChartPane = forwardRef(({
     const strategySignals = useLayoutStore(state => state.strategySignals)
     const magnetMode = useLayoutStore(state => state.magnetMode)
     const drawingsVisible = useLayoutStore(state => state.drawingsVisible)
+    const chartAppearance = useLayoutStore(state => state.chartAppearance)
 
     const [ohlc, setOhlc] = useState({})
     const [seriesVisible, setSeriesVisible] = useState({})
     const [showTimeframeMenu, setShowTimeframeMenu] = useState(false)
-    const [showSettings, setShowSettings] = useState(false)
+    const [showTimeframeMenu, setShowTimeframeMenu] = useState(false)
 
     // Initialize visibility state based on configs
     useEffect(() => {
@@ -96,12 +98,23 @@ const ChartPane = forwardRef(({
             height: containerRef.current.clientHeight,
             attributionLogo: false,
             layout: {
-                background: { type: ColorType.Solid, color: '#131722' },
+                background: {
+                    type: chartAppearance.backgroundType === 'solid' ? ColorType.Solid : ColorType.VerticalGradient,
+                    color: chartAppearance.backgroundColor1,
+                    topColor: chartAppearance.backgroundColor1,
+                    bottomColor: chartAppearance.backgroundColor2
+                },
                 textColor: '#787b86',
             },
             grid: {
-                vertLines: { color: 'rgba(42, 46, 57, 0.5)', visible: !isTimeline },
-                horzLines: { color: 'rgba(42, 46, 57, 0.5)', visible: !isTimeline },
+                vertLines: {
+                    color: chartAppearance.gridColor,
+                    visible: !isTimeline && (chartAppearance.gridLines === 'all' || chartAppearance.gridLines === 'vert')
+                },
+                horzLines: {
+                    color: chartAppearance.gridColor,
+                    visible: !isTimeline && (chartAppearance.gridLines === 'all' || chartAppearance.gridLines === 'horz')
+                },
             },
             rightPriceScale: {
                 visible: true,
@@ -299,6 +312,31 @@ const ChartPane = forwardRef(({
             })
         }
     }, [timeScaleVisible])
+
+    // React to Appearance Changes
+    useEffect(() => {
+        if (!chartRef.current) return
+        chartRef.current.applyOptions({
+            layout: {
+                background: {
+                    type: chartAppearance.backgroundType === 'solid' ? ColorType.Solid : ColorType.VerticalGradient,
+                    color: chartAppearance.backgroundColor1,
+                    topColor: chartAppearance.backgroundColor1,
+                    bottomColor: chartAppearance.backgroundColor2
+                }
+            },
+            grid: {
+                vertLines: {
+                    color: chartAppearance.gridColor,
+                    visible: !isTimeline && (chartAppearance.gridLines === 'all' || chartAppearance.gridLines === 'vert')
+                },
+                horzLines: {
+                    color: chartAppearance.gridColor,
+                    visible: !isTimeline && (chartAppearance.gridLines === 'all' || chartAppearance.gridLines === 'horz')
+                }
+            }, // Add other dynamic options here (watermark, margins, etc.)
+        })
+    }, [chartAppearance, isTimeline])
 
     // Track widths for hover detection
     const scaleWidths = useRef({})
@@ -545,6 +583,25 @@ const ChartPane = forwardRef(({
                     visible: isVisible,
                     color: config.color,
                     lineWidth: config.lineWidth,
+                }
+                if (config.chartType === 'candle') {
+                    if (config.upColor) opts.upColor = config.upColor
+                    if (config.downColor) opts.downColor = config.downColor
+                    if (config.borderVisible !== undefined) opts.borderVisible = config.borderVisible
+                    if (config.borderUpColor) opts.borderUpColor = config.borderUpColor
+                    if (config.borderDownColor) opts.borderDownColor = config.borderDownColor
+                    if (config.wickVisible !== undefined) opts.wickVisible = config.wickVisible
+                    if (config.wickUpColor) opts.wickUpColor = config.wickUpColor
+                    if (config.wickDownColor) opts.wickDownColor = config.wickDownColor
+                    if (config.bodyVisible !== undefined) {
+                        // LWC doesn't have bodyVisible. If false, set colors to transparent?
+                        // Actually it doesn't support 'bodyVisible'.
+                        // We simulate it by setting upColor/downColor to transparent if bodyVisible is false.
+                        if (config.bodyVisible === false) {
+                            opts.upColor = 'transparent'
+                            opts.downColor = 'transparent'
+                        }
+                    }
                 }
                 if (config.priceScaleId) opts.priceScaleId = config.priceScaleId
                 series.applyOptions(opts)
@@ -968,7 +1025,7 @@ const ChartPane = forwardRef(({
                                                 onClick={() => onMovePane?.(-1)}
                                                 title="Move Pane Up"
                                             >
-                                                в†‘
+                                                {'\u25B2'}
                                             </button>
                                             <button
                                                 className="action-btn"
@@ -998,12 +1055,12 @@ const ChartPane = forwardRef(({
                                 <div className="chart-panel__indicators-row" key={config.id}>
                                     <div className={`indicator ${!isVisible ? 'indicator--hidden' : ''}`} style={{ color: config.color }}>
                                         <button className={`eye-btn ${!isVisible ? 'eye-btn--off' : ''}`} onClick={() => toggleVisibility(config.id)}>
-                                            {isVisible ? 'рџ‘Ѓ' : 'рџ‘ЃвЂЌрџ—Ё'}
+                                            {isVisible ? '\u25CF' : '\u25CB'}
                                         </button>
                                         <span className="ind-name">{config.title || config.chartType || config.type}</span>
                                         <span className="ind-value">{sOhlc.value?.toFixed(2)}{sOhlc.volume ? formatVolume(sOhlc.volume) : ''}</span>
                                         <div className="action-buttons">
-                                            <button className="action-btn" title="РќР°СЃС‚СЂРѕР№РєРё">вљ™</button>
+                                            <button className="action-btn" title="Настройки">{'\u2699'}</button>
 
                                             {/* UI for Moving Series (Floor System) */}
                                             {/* We rely on SeriesMenu for advanced moves, but can add quick up/down here? */}
@@ -1025,54 +1082,53 @@ const ChartPane = forwardRef(({
                                             />
                                             <button
                                                 className="action-btn action-btn--danger"
-                                                title="РЈРґР°Р»РёС‚СЊ"
+                                                title="Удалить"
                                                 onClick={() => onRemoveSeries?.(config.id)}
                                             >
-                                                вњ•
+                                                {'\u2715'}
                                             </button>
                                         </div>
                                     </div>
                                 </div>
-                            )
-                        }
+                                </div>
+            )
+            }
                     })}
-                </div>
-            )}
+        </div>
+    )
+}
 
             <div ref={containerRef} className="chart-panel__chart" style={{ width: '100%', height: '100%' }} />
 
-            {/* Chart Controls - Top Right (Settings Only) */}
-            {!isTimeline && (
-                <div className="chart-controls">
-                    <button
-                        className="chart-control-btn"
-                        onClick={() => setShowSettings(true)}
-                        title="РќР°СЃС‚СЂРѕР№РєРё РіСЂР°С„РёРєР°"
-                    >
-                        вљ™пёЏ
-                    </button>
-                </div>
-            )}
+            {/* Chart Controls - Top Right (Settings Only) */ }
+            {/* Chart Controls - Floating Top Right Settings (REMOVED) */ }
+            {/* Moved to Header Row */ }
 
-            {mainInfo && (
-                <div className="chart-pane__watermark" style={{ ...watermarkStyle, display: isTimeline ? 'none' : 'flex' }}>
-                    {mainInfo.ticker}
-                </div>
-            )}
-            {/* Drawings Overlay */}
-            {!isTimeline && chartRef.current && (
-                <DrawingsManager
-                    chart={chartRef.current}
-                    seriesConfigs={seriesConfigs} // Pass config to Dynamic finder
-                    seriesMap={seriesMap} // Pass Ref for API access
-                    width={containerRef.current?.clientWidth}
-                    height={containerRef.current?.clientHeight}
-                    paneId={id}
-                    magnetMode={magnetMode}
-                    drawingsVisible={drawingsVisible}
-                />
-            )}
+
+
+{
+        mainInfo && (
+        <div className="chart-pane__watermark" style={{ ...watermarkStyle, display: isTimeline ? 'none' : 'flex' }}>
+            {mainInfo.ticker}
         </div>
+    )
+}
+{/* Drawings Overlay */ }
+{
+    !isTimeline && chartRef.current && (
+        <DrawingsManager
+            chart={chartRef.current}
+            seriesConfigs={seriesConfigs} // Pass config to Dynamic finder
+            seriesMap={seriesMap} // Pass Ref for API access
+            width={containerRef.current?.clientWidth}
+            height={containerRef.current?.clientHeight}
+            paneId={id}
+            magnetMode={magnetMode}
+            drawingsVisible={drawingsVisible}
+        />
+    )
+}
+        </div >
     )
 })
 

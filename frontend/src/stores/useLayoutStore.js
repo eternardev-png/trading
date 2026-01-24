@@ -25,10 +25,21 @@ export const useLayoutStore = create((set, get) => ({
                     visible: true,
                     chartType: 'candle', // candle, line, area
                     priceScale: 'right',
-                    color: '#26a69a',
                     title: 'BTC/USDT',
                     isMain: true,
-                    data: []
+                    data: [],
+
+                    // Default 'Late' Config Series Style
+                    upColor: 'transparent',
+                    downColor: '#FFFFFF',
+                    borderVisible: true,
+                    borderUpColor: '#FFFFFF',
+                    borderDownColor: '#FFFFFF',
+                    wickVisible: true,
+                    wickUpColor: '#FFFFFF',
+                    wickDownColor: '#FFFFFF',
+                    bodyVisible: true,
+                    color: '#26a69a' // fallback
                 },
                 {
                     id: 'volume-series',
@@ -70,6 +81,26 @@ export const useLayoutStore = create((set, get) => ({
     setMagnetMode: (enabled) => set({ magnetMode: enabled }),
     drawingsVisible: true,
     setDrawingsVisible: (visible) => set({ drawingsVisible: visible }),
+
+    // --- CHART APPEARANCE STATE ---
+    chartAppearance: {
+        backgroundType: 'gradient',
+        backgroundColor1: '#000000', // Late Default
+        backgroundColor2: '#010101', // Late Default
+        gridLines: 'all',
+        gridColor: '#2a2e39',
+        crosshair: 'dashed',
+        watermark: true,
+        scaleText: 12,
+        scaleLines: true,
+        marginTop: 10,
+        marginBottom: 8,
+        marginRight: 10,
+        timezone: 'UTC+3' // Late Default
+    },
+    setChartAppearance: (updates) => set((state) => ({
+        chartAppearance: { ...state.chartAppearance, ...updates }
+    })),
 
     // --- STRATEGY STATE ---
     strategies: [],
