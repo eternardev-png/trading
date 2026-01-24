@@ -283,8 +283,9 @@ function ChartPanel() {
 
             if (olderData && olderData.length > 0) {
                 // SAFE MERGE: Deduplicate, Sort, Validate
-                // This prevents "Value is null" crashes by ensuring unique times and strictly valid data
-                const newData = mergeAndSortData(mainSeries.data, olderData)
+                // Order: olderData first, then mainSeries.data.
+                // This ensures that existing (current) data overwrites historical (older) data if timestamps overlap.
+                const newData = mergeAndSortData(olderData, mainSeries.data)
 
                 // Compare lengths to see if we actually added anything useful
                 if (newData.length > mainSeries.data.length) {
