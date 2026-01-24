@@ -16,11 +16,12 @@ function isStandardTicker(ticker) {
 /**
  * Fetches data for a single ticker from the API.
  */
-async function fetchRawData(ticker, timeframe, toTimestamp, limit) {
+async function fetchRawData(ticker, timeframe, toTimestamp, limit, source) {
     try {
         let url = `${API_BASE}/data?ticker=${encodeURIComponent(ticker)}&timeframe=${timeframe}`
         if (toTimestamp) url += `&to_timestamp=${toTimestamp}`
         if (limit) url += `&limit=${limit}`
+        if (source) url += `&source=${source}`
 
         const res = await fetch(url)
         if (!res.ok) return null
@@ -84,9 +85,9 @@ function alignData(seriesMap) {
  * Main function to get data for a ticker string (simple or math).
  * Delegates entirely to the Backend Synthetic Engine.
  */
-export async function resolveTickerData(expression, timeframe, toTimestamp, limit) {
+export async function resolveTickerData(expression, timeframe, toTimestamp, limit, source) {
     // 1. Try fetching from backend (which covers both standard tickers and formulas)
-    const data = await fetchRawData(expression, timeframe, toTimestamp, limit)
+    const data = await fetchRawData(expression, timeframe, toTimestamp, limit, source)
 
     if (data && data.length > 0) {
         return data

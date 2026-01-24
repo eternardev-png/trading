@@ -4,7 +4,7 @@ import LayersPanel from './LayersPanel'
 import ChartPane from './ChartPane'
 import SymbolSearch from './SymbolSearch'
 import { alignSeriesData } from '../utils/dataAligner'
-import { mergeAndSortData } from '../utils/chartUtils' // Import safe merger
+import { mergeAndSortData } from '../utils/chartDataUtils' // Import safe merger
 import { calculateIndicator } from '../utils/indicators'
 import { resolveTickerData } from '../services/dataService'
 import './ChartPanel.scss'
@@ -124,10 +124,13 @@ function ChartPanel() {
             try {
                 // Use global timeframe or series timeframe (if persistent)
                 const data = await resolveTickerData(series.ticker, timeframe)
-
                 if (data && data.length > 0) {
-                    console.log(`[ChartPanel] Loaded ${data.length} rows for ${series.ticker} (${timeframe})`)
-                    setSeriesData(series.id, data)
+                    // SANITIZE INITIAL DATA
+                    // This ensures no nulls/duplicates enter the system from the start
+                    const safeData = mergeAndSortData([], data)
+
+                    setSeriesData(series.id, safeData)
+                    console.log(`[ChartPanel] Loaded & Sanitized ${safeData.length} rows for ${series.ticker} (${timeframe})`)
                 } else {
                     console.warn(`[ChartPanel] No data found for ${series.ticker}`)
                     // Optional: Reset cache if empty so we can retry later?
@@ -274,12 +277,15 @@ function ChartPanel() {
         }
 
         const ticker = mainSeries.ticker
-        const timeframe = mainSeries.timeframe || useLayoutStore.getState().globalTimeframe || '1d'
+        // Determine source for history fetch:
+        // TradingView (default) doesn't support deep history pagination.
+        // We force 'ccxt' for crypto or 'yfinance' for others to ensure we get OLDER data.
+        const source = ticker.includes('/') ? 'ccxt' : 'yfinance'
 
-        console.log(`Loading more data for ${ticker} before ${toTimestamp}...`)
+        console.log(`Loading more data for ${ticker} before ${toTimestamp} (Source: ${source})...`)
 
         try {
-            const olderData = await resolveTickerData(ticker, timeframe, toTimestamp, 1000) // Pass to_timestamp and limit 1000
+            const olderData = await resolveTickerData(ticker, timeframe, toTimestamp, 1000, source) // Pass strict source
 
             if (olderData && olderData.length > 0) {
                 // SAFE MERGE: Deduplicate, Sort, Validate

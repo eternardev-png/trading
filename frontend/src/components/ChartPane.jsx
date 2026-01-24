@@ -3,6 +3,7 @@ import { createChart, ColorType } from 'lightweight-charts'
 import { useLayoutStore } from '../stores/useLayoutStore'
 import SeriesMenu from './SeriesMenu'
 import DrawingsManager from './DrawingsManager'
+import { mergeAndSortData } from '../utils/chartDataUtils' // Safe Utils
 import './ChartPanel.scss' // Reusing existing styles
 
 // Helper to format volume
@@ -45,8 +46,10 @@ const ChartPane = forwardRef(({
     const isFirstLoad = useRef(true)
     const lastDataCount = useRef(0) // Track data count for scroll preservation
     const isLoadingRef = useRef(isLoading) // Ref to access latest loading state in listeners
+    const onLoadMoreRef = useRef(onLoadMore) // Ref for callback to avoid stale closure
 
     useEffect(() => { isLoadingRef.current = isLoading }, [isLoading])
+    useEffect(() => { onLoadMoreRef.current = onLoadMore }, [onLoadMore])
 
     const strategySignals = useLayoutStore(state => state.strategySignals)
     const magnetMode = useLayoutStore(state => state.magnetMode)
@@ -275,19 +278,16 @@ const ChartPane = forwardRef(({
         })
 
         // 3. LISTEN TO INTERACTIONS to Sync AutoScale
-        // LWC disables autoScale on user scroll/zoom. We need to catch this.
-        // No direct event. We hook into TIME RANGE changes (often happen with scroll)
-        // AND add DOM listeners to container for mouseup/wheel (capture phase).
 
         lwChart.timeScale().subscribeVisibleLogicalRangeChange((range) => {
             syncScaleModes()
 
             // Infinite Scroll Trigger
             // Trigger when user scrolls near the requested history edge (left side)
-            if (onLoadMore && range && range.from < 10) {
+            if (onLoadMoreRef.current && range && range.from < 10) {
                 // Throttle requests using ref
                 if (!isLoadingRef.current) {
-                    onLoadMore()
+                    onLoadMoreRef.current()
                 }
             }
         })
@@ -469,47 +469,26 @@ const ChartPane = forwardRef(({
             // Set Data
             // Note: setData() resets the time scale by default. We counter this by restoring prevRange below.
             if (seriesData && seriesData.length > 0) {
+                // Determine series type for validation context (optional, util handles general cases)
+                // We use the shared reliable utility to sanitize EVERYTHING just before render.
+                // This is the final firewall against crashing the renderer.
+
                 if (config.chartType === 'candle') {
-                    // 1. Map & Validate Types
-                    let cleanData = seriesData.map(d => ({
+                    // 1. Cast & Clean (Strip garbage properties, ensure Numbers)
+                    const cleanData = seriesData.map(d => ({
                         time: d.time,
                         open: Number(d.open),
                         high: Number(d.high),
                         low: Number(d.low),
                         close: Number(d.close)
-                    })).filter(d => {
-                        // Check Falsy / Objects
-                        if (!d.time) return false
-                        if (typeof d.time === 'object') {
-                            if (d.time.year === undefined) return false
-                        }
-                        // Check Finite Numbers
-                        if (!Number.isFinite(d.open) || !Number.isFinite(d.high) ||
-                            !Number.isFinite(d.low) || !Number.isFinite(d.close)) return false
-                        return true
-                    })
+                    }))
 
-                    // 2. Sort by Time (Ascending)
-                    cleanData.sort((a, b) => {
-                        const ta = typeof a.time === 'object' ? (a.time.year * 10000 + a.time.month * 100 + a.time.day) : a.time
-                        const tb = typeof b.time === 'object' ? (b.time.year * 10000 + b.time.month * 100 + b.time.day) : b.time
-                        return ta - tb
-                    })
-
-                    // 3. Deduplicate (Keep first occurence)
-                    const uniqueMap = new Map()
-                    cleanData.forEach(item => {
-                        // Use string key for objects if needed, but usually primitive
-                        const key = typeof item.time === 'object' ? `${item.time.year}-${item.time.month}-${item.time.day}` : item.time
-                        if (!uniqueMap.has(key)) {
-                            uniqueMap.set(key, item)
-                        }
-                    })
-                    const validData = Array.from(uniqueMap.values())
+                    // 2. Dedupe/Sort & Validate
+                    const validData = mergeAndSortData([], cleanData).filter(d => d.open !== undefined)
 
                     series.setData(validData)
-                    // ... (Marker logic omitted for brevity but can be restored)
-                    const last = seriesData[seriesData.length - 1]
+
+                    const last = validData[validData.length - 1]
                     if (last && config.isMain) {
                         setOhlc(prev => ({
                             ...prev,
@@ -523,16 +502,18 @@ const ChartPane = forwardRef(({
                         }))
                     }
                 } else if (config.chartType === 'line') {
-                    const lineData = seriesData.filter(d => d && d.time).map(d => {
-                        const val = d.value !== undefined ? d.value : d.close
-                        return {
-                            time: d.time,
-                            value: Number(val)
-                        }
-                    }).filter(d => !isNaN(d.value))
+                    // 1. Cast & Clean (Map close -> value, ensure Numbers)
+                    const cleanData = seriesData.map(d => ({
+                        time: d.time,
+                        value: Number(d.value !== undefined ? d.value : d.close)
+                    }))
 
-                    series.setData(lineData)
-                    const last = lineData[lineData.length - 1]
+                    // 2. Dedupe/Sort & Validate
+                    const validData = mergeAndSortData([], cleanData).filter(d => d.value !== undefined)
+
+                    series.setData(validData)
+
+                    const last = validData[validData.length - 1]
                     if (last) {
                         setOhlc(prev => ({
                             ...prev,
@@ -540,25 +521,31 @@ const ChartPane = forwardRef(({
                         }))
                     }
                 } else if (config.chartType === 'volume' || config.type === 'volume') {
-                    const volData = seriesData.filter(d => d && d.time).map(d => {
-                        const vol = Number(d.volume)
+                    // 1. Cast & Clean (Map volume -> value, ensure Numbers)
+                    const cleanData = seriesData.map(d => {
                         const open = Number(d.open)
                         const close = Number(d.close)
                         return {
                             time: d.time,
-                            value: isNaN(vol) ? 0 : vol,
-                            color: (isNaN(open) || isNaN(close) || close >= open) ? 'rgba(38, 166, 154, 0.5)' : 'rgba(239, 83, 80, 0.5)'
+                            value: Number(d.value !== undefined ? d.value : d.volume),
+                            color: d.color || ((close >= open) ? 'rgba(38, 166, 154, 0.5)' : 'rgba(239, 83, 80, 0.5)')
                         }
                     })
-                    series.setData(volData)
-                    const last = seriesData[seriesData.length - 1]
+
+                    // 2. Dedupe/Sort & Validate
+                    const validData = mergeAndSortData([], cleanData).filter(d => d.value !== undefined)
+
+                    series.setData(validData)
+
+                    const last = validData[validData.length - 1]
                     if (last) {
                         setOhlc(prev => ({
                             ...prev,
-                            [config.id]: { value: last.volume, volume: last.volume }
+                            [config.id]: { value: last.value, volume: last.value }
                         }))
                     }
                 } else if (config.id === 'BTC_GM2' && seriesData.length > 0) {
+
                     // HANDLING COMPLEX BTC_GM2 INDICATOR
                     // 1. Main Line (BTC_GM2) - mapped above to 'series' (assuming generic line created it)
                     const lineData = seriesData.map(d => ({ time: d.time, value: d.BTC_GM2 }))

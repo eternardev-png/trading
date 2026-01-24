@@ -117,9 +117,9 @@ class DataLoader:
                         return pd.DataFrame()
 
             
-            # 1. Try TradingView (Best quality)
-            # Check availability of Interval and TVLoader
-            if (source == 'auto' or source == 'tv') and self.tv_loader:
+            # 1. Try TradingView (Best quality, but no pagination support)
+            # If to_timestamp is requested (history load), skip TV and fallback to CCXT/YF which support history.
+            if (source == 'auto' or source == 'tv') and self.tv_loader and to_timestamp is None:
                 try:
                     df = self._fetch_tv_wrapper(ticker, timeframe, limit)
                     if df is not None and not df.empty:
@@ -171,6 +171,29 @@ class DataLoader:
             except Exception as e:
                 print(f"YF Error: {e}")
 
+            # 4. Smart Retry (Auto-Resolve Crypto)
+            # If input is simple (e.g. "BTC"), assume it might be a crypto pair and try common variants.
+            if df.empty and '/' not in ticker and '-' not in ticker and not is_formula:
+                 # Check if it looks like a ticker (alphanumeric)
+                 if ticker.isalnum():
+                     print(f"DEBUG: Smart Resolution - Trying variations for '{ticker}'...")
+                     
+                     # Variation A: Crypto Pair (BTC -> BTC/USDT) for CCXT/TV
+                     var_a = f"{ticker}/USDT"
+                     print(f"DEBUG: Trying '{var_a}'...")
+                     df = self.fetch_data(var_a, timeframe, limit, source, to_timestamp)
+                     if not df.empty: 
+                         print(f"DEBUG: Resolved '{ticker}' to '{var_a}'")
+                         return df
+
+                     # Variation B: YFinance Crypto (BTC -> BTC-USD)
+                     var_b = f"{ticker}-USD"
+                     print(f"DEBUG: Trying '{var_b}'...")
+                     df = self.fetch_data(var_b, timeframe, limit, source, to_timestamp)
+                     if not df.empty: 
+                         print(f"DEBUG: Resolved '{ticker}' to '{var_b}'")
+                         return df
+            
             print(f"DEBUG: All sources failed for {ticker}")
             return pd.DataFrame()
 
