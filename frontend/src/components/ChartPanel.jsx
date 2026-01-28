@@ -3,6 +3,7 @@ import { useLayoutStore } from '../stores/useLayoutStore'
 import LayersPanel from './LayersPanel'
 import ChartPane from './ChartPane'
 import SymbolSearch from './SymbolSearch'
+import SeriesSettingsModal from './SeriesSettingsModal'
 import { alignSeriesData } from '../utils/dataAligner'
 import { mergeAndSortData } from '../utils/chartDataUtils' // Import safe merger
 import { calculateIndicator } from '../utils/indicators'
@@ -20,7 +21,8 @@ function ChartPanel() {
         movePane,
         moveSeries,
         changeSeriesScale,
-        addSeries
+        addSeries,
+        removeSeries // Added missing action
     } = useLayoutStore()
 
     // Local data cache? Or just use store driven?
@@ -83,7 +85,8 @@ function ChartPanel() {
 
             // Use series timeframe or global
             const timeframe = series.timeframe || useLayoutStore.getState().globalTimeframe || '1d'
-            const cacheKey = `${series.ticker}:${series.indicatorType || 'price'}:${timeframe}`
+            const paramsKey = series.params ? JSON.stringify(series.params) : ''
+            const cacheKey = `${series.ticker}:${series.indicatorType || 'price'}:${timeframe}:${paramsKey}`
 
             // Loop Prevention: Only check cache if we successfully loaded it before?
             // If we mark it as fetched but it failed, we soft-lock.
@@ -106,17 +109,84 @@ function ChartPanel() {
 
             console.log(`[ChartPanel] Fetching data for ${series.id} / ${series.ticker} (${timeframe})`)
 
-            // 0. PRIORITY: Server-Side Computed Indicators (BTC_GM2)
-            if (series.id === 'BTC_GM2' || series.ticker === 'BTC_GM2') {
-                // ... existing logic ...
+            // 0. PRIORITY: Server-Side Computed Indicators
+            // We now route ALL computed indicators to the backend
+            const knownIndicators = ['MACD', 'RSI', 'SMA', 'EMA', 'BB', 'Bollinger', 'GLF']
+            const isServerIndicator =
+                series.id === 'BTC_GM2' ||
+                series.ticker === 'BTC_GM2' ||
+                series.id.startsWith('Antigravity') ||
+                (series.ticker && series.ticker.startsWith('Antigravity')) ||
+                knownIndicators.some(k => (series.ticker || '').includes(k) || (series.id || '').includes(k)) ||
+                series.isComputed === true;
+
+            if (isServerIndicator) {
+                let indicatorName = series.ticker || series.id
+                // Adjust name for specific cases if needed, but 'SMA', 'RSI' etc work directly
+                if (series.id === 'BTC_GM2' || series.ticker === 'BTC_GM2') indicatorName = 'BTC_GM2'
+
+                // ... (rest of logic handles it)
+
+                // Need main series data to pass to server?
+                // Or does server fetch it?
+                // BTC_GM2 (old) uses data in request? 
+                // "Antigravity" needs Main Data (Price) to align/calculate.
+
+                const mainPane = panes[0]
+                const mainSeries = mainPane.series.find(s => s.isMain) || mainPane.series[0]
+
+                if (!mainSeries || !mainSeries.data || mainSeries.data.length === 0) {
+                    console.warn(`[ChartPanel] Waiting for main series data for ${series.id}`)
+                    delete fetchedCache.current[series.id] // Retry later
+                    return
+                }
+
+                // Call Indicator API
+                try {
+                    const response = await fetch(`${API_BASE}/indicators`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            data: mainSeries.data,
+                            indicator: indicatorName,
+                            params: series.params || {}
+                        })
+                    })
+
+                    if (!response.ok) {
+                        console.error(`[ChartPanel] Indicator API failed for ${series.id}: ${response.status} ${response.statusText}`)
+                        throw new Error('Indicator API failed')
+                    }
+                    const result = await response.json()
+                    console.log(`[ChartPanel] RAW API Result for ${series.id}:`, result ? (result.data ? result.data.length + ' rows' : 'No Data') : 'Null Result')
+
+                    if (result && result.data) {
+                        // Protocol 2.0 Handler
+                        if (result.protocol === '2.0' && result.plots) {
+                            console.log(`[ChartPanel] Loaded Protocol 2.0 Indicator: ${result.meta.name}`)
+                            updateSeriesSettings(series.id, {
+                                data: result.data,
+                                plots: result.plots,
+                                meta: result.meta,
+                                protocol: '2.0',
+                                title: result.meta.name // Update title from backend
+                            })
+                        } else {
+                            // Legacy Handler
+                            let mappedData = result.data
+                            setSeriesData(series.id, mappedData)
+                            console.log(`[ChartPanel] Loaded ${mappedData.length} rows for ${series.id}`)
+                        }
+                    }
+
+                } catch (e) {
+                    console.error(`[ChartPanel] Indicator Error ${series.id}:`, e)
+                    delete fetchedCache.current[series.id]
+                }
                 return
             }
 
-            // 1. Client-Side Computed Indicators
-            if (series.isComputed) {
-                // ... existing logic ...
-                return
-            }
+
 
             if (!series.ticker) return
             if (series.indicatorType && series.isComputed) return
@@ -241,6 +311,7 @@ function ChartPanel() {
         })
     }, [panes, mainData, mainSeries?.id])
 
+    const [settingsSeriesId, setSettingsSeriesId] = useState(null)
     const [isLoadingMore, setIsLoadingMore] = useState(false)
 
     // Load More Handler
@@ -281,6 +352,9 @@ function ChartPanel() {
         // TradingView (default) doesn't support deep history pagination.
         // We force 'ccxt' for crypto or 'yfinance' for others to ensure we get OLDER data.
         const source = ticker.includes('/') ? 'ccxt' : 'yfinance'
+
+        // FIX: Get timeframe from series or global store
+        const timeframe = mainSeries.timeframe || useLayoutStore.getState().globalTimeframe || '1d'
 
         console.log(`Loading more data for ${ticker} before ${toTimestamp} (Source: ${source})...`)
 
@@ -343,9 +417,6 @@ function ChartPanel() {
                             // TimeScale Visibility: Only last pane shows dates
                             timeScaleVisible={idx === panes.length - 1}
 
-                            onMoveSeries={handleMoveSeries}
-                            onRemoveSeries={handleRemoveSeries}
-                            onScaleChange={handleScaleChange}
                             onSymbolSearchClick={() => setIsSearchOpen(true)}
                             onChartReady={handleChartReady}
 
@@ -357,6 +428,22 @@ function ChartPanel() {
                             onMovePane={(dir) => movePane(pane.id, dir)} // removed chartId
                             canMoveUp={idx > 0}
                             canMoveDown={idx < panes.length - 1}
+                            onRemoveSeries={(id) => removeSeries(id)}
+                            onMoveSeries={(id, dir) => moveSeries(id, dir)}
+                            onScaleChange={(id, mode) => {
+                                // mode: 'left', 'right', 'new-left', 'new-right'
+                                if (mode === 'new-left' || mode === 'new-right') {
+                                    moveSeriesToNewPane(id, mode === 'new-left' ? 'to_new_pane_left' : 'to_new_pane_right') // Map to store action
+                                } else {
+                                    // Toggle scale side (update series config)
+                                    const s = pane.series.find(x => x.id === id)
+                                    if (s) updateSeriesSettings(id, { priceScaleId: mode })
+                                }
+                            }}
+                            onOpenSettings={(id) => {
+                                console.log('[ChartPanel] Opening settings for:', id)
+                                setSettingsSeriesId(id)
+                            }}
                         />
 
                         {idx < panes.length - 1 && (
@@ -399,6 +486,13 @@ function ChartPanel() {
 
             {/* showLayers && <LayersPanel ... /> */}
             <SymbolSearch isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} onSelect={handleSymbolSelect} />
+            {/* Modals */}
+            {settingsSeriesId && (
+                <SeriesSettingsModal
+                    seriesId={settingsSeriesId}
+                    onClose={() => setSettingsSeriesId(null)}
+                />
+            )}
         </div>
     )
 }

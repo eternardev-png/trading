@@ -318,8 +318,23 @@ const ChartSettingsModal = ({ onClose, mainSeriesId }) => {
                     <input type="color" value={interfaceAppearance.textPrimary} onChange={e => setInterfaceAppearance({ textPrimary: e.target.value })} />
                 </div>
                 <div className="form-row">
+                    <span>Вторичный текст</span>
+                    <input type="color" value={interfaceAppearance.textSecondary || '#9aa0a6'} onChange={e => setInterfaceAppearance({ textSecondary: e.target.value })} />
+                </div>
+                <div className="form-row">
                     <span>Акцентный цвет</span>
                     <input type="color" value={interfaceAppearance.accentColor} onChange={e => setInterfaceAppearance({ accentColor: e.target.value })} />
+                </div>
+                <div className="form-row">
+                    <span>Свечение</span>
+                    {/* Note: Color picker returns hex. We need rgba for best glow effect, but simple hex is easier for user. 
+                        We can auto-convert hex to rgba with opacity in Store or App, or just let user pick a transparent color if browser supports it 
+                        (standard color picker usually no alpha). 
+                        Let's just bind hex for now, user can pick a lighter color.
+                        OR: We can assume 50% opacity of the chosen color in App.jsx if we parse it.
+                        But user wants "Glow Color". Let's just set it as a color.
+                    */}
+                    <input type="color" value={interfaceAppearance.accentGlow?.slice(0, 7) || '#2962ff'} onChange={e => setInterfaceAppearance({ accentGlow: e.target.value })} />
                 </div>
             </div>
             <div className="section">

@@ -454,7 +454,7 @@
 
         &.active {
             color: var(--accent-blue);
-            background: rgba(41, 98, 255, 0.15);
+            background: var(--accent-blue-glow); // Dynamic glow
         }
     }
 
@@ -493,11 +493,11 @@
         }
 
         &.active {
-            background: #2962ff;
+            background: var(--accent-blue);
             color: white;
 
             &:hover {
-                background: #1e53e5;
+                filter: brightness(1.1); // Dynamic hover
             }
         }
 

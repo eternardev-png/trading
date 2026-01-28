@@ -8,7 +8,7 @@
         width: 22px;
         height: 22px; // Slightly larger touch target
         font-size: 16px; // Lighter weight font look
-        color: #787b86; // TV standard gray
+        color: var(--text-secondary); // TV standard gray
         display: flex;
         align-items: center;
         justify-content: center;
@@ -20,12 +20,12 @@
         background: transparent;
 
         &:hover {
-            color: #d1d4dc;
+            color: var(--text-primary);
             background: rgba(255, 255, 255, 0.06); // Subtle hover bg
         }
 
         &.active {
-            color: #d1d4dc;
+            color: var(--text-primary);
             background: rgba(255, 255, 255, 0.06);
         }
     }
@@ -40,11 +40,12 @@
 // Dropdown is outside charts in document.body, so generic selector
 .series-menu__dropdown {
     position: absolute;
-    background: rgba(30, 34, 45, 0.45);
+    background: var(--bg-primary); // Fallback
+    background: rgba(var(--bg-primary-rgb), 0.85); // Dynamic alpha
     /* Glass Background */
     backdrop-filter: blur(12px);
     /* Strong blur for menu */
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    border: 1px solid var(--glass-border);
     /* Subtle rim */
     border-radius: 6px;
     padding: 6px 0;
@@ -77,7 +78,7 @@
         .name {
             font-size: 13px;
             font-weight: 500;
-            color: #d1d4dc;
+            color: var(--text-primary);
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
@@ -87,7 +88,7 @@
 
     .series-menu__divider {
         height: 1px;
-        background: rgba(255, 255, 255, 0.08);
+        background: var(--glass-border);
         margin: 5px 0;
     }
 
@@ -98,7 +99,7 @@
         width: 100%;
         padding: 6px 16px;
         font-size: 13px;
-        color: #d1d4dc;
+        color: var(--text-primary);
         background: transparent;
         border: none;
         cursor: pointer;
@@ -112,12 +113,12 @@
         }
 
         &.active {
-            color: #2962ff;
+            color: var(--accent-blue);
             font-weight: 500;
         }
 
         &.danger {
-            color: #f7525f;
+            color: #f7525f; // Keep red for danger
 
             &:hover {
                 background: rgba(247, 82, 95, 0.15);
@@ -133,7 +134,7 @@
             width: 18px;
             text-align: center;
             font-size: 15px;
-            color: #787b86;
+            color: var(--text-secondary);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -141,18 +142,18 @@
         }
 
         &:hover .icon {
-            color: #d1d4dc;
+            color: var(--text-primary);
         }
 
         // Submenu indicator
         .arrow {
             margin-left: auto;
-            color: #787b86;
+            color: var(--text-secondary);
             font-size: 10px;
         }
 
         .check {
-            color: #2962ff;
+            color: var(--accent-blue);
             position: absolute;
             right: 16px;
             font-size: 12px;
@@ -167,14 +168,23 @@
         top: -4px;
         margin-left: 4px;
         /* Gap */
-        background: rgba(30, 34, 45, 0.5);
+        background: rgba(var(--bg-primary-rgb), 0.9);
         /* Glass */
         backdrop-filter: blur(12px);
-        border: 1px solid rgba(255, 255, 255, 0.08);
+        border: 1px solid var(--glass-border);
         border-radius: 6px;
         padding: 6px 0;
         min-width: 240px;
         box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
         z-index: 100000;
+
+        .series-menu__group-title {
+            padding: 8px 16px 4px;
+            font-size: 11px;
+            text-transform: uppercase;
+            color: var(--text-secondary);
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
     }
 }

@@ -148,7 +148,7 @@
                 input[type="checkbox"] {
                     width: 16px;
                     height: 16px;
-                    accent-color: #2962ff;
+                    accent-color: var(--accent-blue);
                     cursor: pointer;
                 }
 
@@ -180,15 +180,15 @@
 
                 select,
                 input[type="number"] {
-                    background: #131722;
-                    border: 1px solid #434651;
-                    color: #d1d4dc;
+                    background: rgba(0, 0, 0, 0.2);
+                    border: 1px solid var(--glass-border);
+                    color: var(--text-primary);
                     padding: 4px 8px;
                     border-radius: 4px;
                     outline: none;
 
                     &:focus {
-                        border-color: #2962ff;
+                        border-color: var(--accent-blue);
                     }
                 }
 
@@ -201,8 +201,8 @@
                 .input-with-unit {
                     display: flex;
                     align-items: center;
-                    background: #131722;
-                    border: 1px solid #434651;
+                    background: rgba(0, 0, 0, 0.2);
+                    border: 1px solid var(--glass-border);
                     border-radius: 4px;
                     padding-right: 8px;
 
@@ -214,7 +214,7 @@
                     }
 
                     span {
-                        color: #787b86;
+                        color: var(--text-secondary);
                         margin-left: 4px;
                     }
                 }

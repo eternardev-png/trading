@@ -3,12 +3,51 @@ import ReactDOM from 'react-dom'
 import './IndicatorsMenu.scss'
 
 const INDICATORS = [
-    { id: 'SMA', name: 'Скользящая средняя (SMA)', category: 'Trend', type: 'overlay', defaultParams: { length: 20 } },
-    { id: 'EMA', name: 'Экспоненциальная скользящая средняя (EMA)', category: 'Trend', type: 'overlay', defaultParams: { length: 20 } },
-    { id: 'RSI', name: 'Индекс относительной силы (RSI)', category: 'Oscillator', type: 'pane', defaultParams: { length: 14 } },
-    { id: 'MACD', name: 'Схождение/расхождение скользящих средних (MACD)', category: 'Oscillator', type: 'pane', defaultParams: { fast: 12, slow: 26, signal: 9 } },
-    { id: 'Bollinger', name: 'Полосы Боллинджера (BB)', category: 'Volatility', type: 'overlay', defaultParams: { length: 20, mult: 2.0 } },
-    { id: 'BTC_GM2', name: 'BTC vs Global M2 (Custom)', category: 'Custom', type: 'pane', chartType: 'line', defaultParams: { sma_weeks: 52 } }
+    { id: 'SMA', name: 'Скользящая средняя (SMA)', category: 'Trend', type: 'overlay', chartType: 'line', defaultParams: { length: 20 } },
+    { id: 'EMA', name: 'Экспоненциальная скользящая средняя (EMA)', category: 'Trend', type: 'overlay', chartType: 'line', defaultParams: { length: 20 } },
+    { id: 'RSI', name: 'Индекс относительной силы (RSI)', category: 'Oscillator', type: 'pane', chartType: 'line', defaultParams: { length: 14 } },
+    {
+        id: 'MACD',
+        name: 'Схождение/расхождение скользящих средних (MACD)',
+        category: 'Oscillator',
+        type: 'pane',
+        defaultParams: { fast: 12, slow: 26, signal: 9 },
+        chartType: 'line', // Base type
+        lines: [
+            { key: 'Hist', title: 'Histogram', chartType: 'volume', color: '#26a69a' }, // Histogram usually matches volume style or specific columns
+            { key: 'MACD', title: 'MACD', color: '#2962ff' },
+            { key: 'Signal', title: 'Signal', color: '#ff9800' }
+        ]
+    },
+    {
+        id: 'Bollinger',
+        name: 'Полосы Боллинджера (BB)',
+        category: 'Volatility',
+        type: 'overlay',
+        defaultParams: { length: 20, mult: 2.0 },
+        chartType: 'line',
+        lines: [
+            { key: 'upper', title: 'Upper', color: '#009688' },
+            { key: 'lower', title: 'Lower', color: '#009688' },
+            { key: 'basis', title: 'Basis', color: '#ff5252' }
+        ]
+    },
+    { id: 'GLF', name: 'Global Liquidity Flow (GLF)', category: 'Macro', type: 'pane', chartType: 'line', defaultParams: {} },
+    { id: 'BTC_GM2', name: 'BTC vs Global M2 (Custom)', category: 'Macro', type: 'pane', chartType: 'line', defaultParams: { sma_weeks: 52 } },
+    {
+        id: 'Antigravity_Tier1',
+        name: 'GLF Antigravity Tier 1 (Macro)',
+        category: 'Macro',
+        type: 'pane',
+        chartType: 'line',
+        lines: [
+            { key: 'val_roc', title: 'ROC (4W)', color: '#2962ff' },
+            { key: 'val_zero', title: 'Zero Line', color: '#787b86', lineWidth: 1, lineStyle: 2 },
+            { key: 'val_raw', title: 'Balance Sheet (Raw)', color: '#ff9800', priceScaleId: 'right', visible: false }
+        ],
+        defaultParams: {}
+    },
+    { id: 'Antigravity_Tier2', name: 'GLF Antigravity Tier 2 (OnChain)', category: 'OnChain', type: 'overlay', chartType: 'markers', defaultParams: {} }
 ]
 
 const TABS = ['Все', 'Избранное', 'Встроенные', 'Скрипты', 'Мои скрипты']

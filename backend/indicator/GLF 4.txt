@@ -1,0 +1,177 @@
+//@version=6
+// © QuantitativeAlpha
+indicator(title = 'Global Liquidity Flow', shorttitle = 'GLF', overlay = true, scale = scale.left)
+
+// ==========================================
+// ВХОДНЫЕ ПАРАМЕТРЫ (Inputs)
+// ==========================================
+
+// Группа: Основные Центральные Банки
+group_cb = "Central Banks Activation"
+fed_active    = input.bool(true,  'FED (USA)', group=group_cb)
+tga_active    = input.bool(true,  'TGA (Treasury)', group=group_cb)
+rrp_active    = input.bool(true,  'RRP (Reverse Repo)', group=group_cb)
+ecb_active    = input.bool(true,  'ECB (Europe)', group=group_cb)
+pbc_active    = input.bool(true,  'PBC (China)', group=group_cb)
+boj_active    = input.bool(true,  'BOJ (Japan)', group=group_cb)
+other_active  = input.bool(true,  'Smaller Central Banks', group=group_cb)
+
+// Группа: Денежная масса M2
+group_m2 = "Money Supply (M2)"
+usa_active      = input.bool(true, 'USM2 (USA)', group=group_m2)
+europe_active   = input.bool(true, 'EUM2 (Europe)', group=group_m2)
+china_active    = input.bool(true, 'CNM2 (China)', group=group_m2)
+japan_active    = input.bool(true, 'JPM2 (Japan)', group=group_m2)
+other_m2_active = input.bool(true, 'Smaller M2 Economies', group=group_m2)
+
+// Группа: Настройки индикатора
+group_set = "Indicator Settings"
+sma_input_raw     = input.int(0,     'SMA Length (0 = Off)', minval = 0, group=group_set)
+roc_input         = input.int(100,   'ROC (Rate of Change) Length', minval = 0, group=group_set)
+offset_input      = input.int(97,    'Offset Bars (Shift)', group=group_set)
+corr_length_input = input.string('3M', 'Correlation Period', options = ['3M', '6M', '9M', '1Y', '3Y', '5Y', '10Y'], group=group_set)
+
+// Группа: Стратегия тренда
+group_strat = "Trend & Analysis"
+strategy_type  = input.string('EMA', 'Trend Type', options = ['EMA', 'SMA', 'RMA', 'WMA'], group=group_strat)
+fast_input     = input.int(30,  'Fast Length', minval = 1, group=group_strat)
+slow_input     = input.int(60,  'Slow Length', minval = 2, group=group_strat)
+ema_80_length  = input.int(180, 'Baseline (EMA 80) Length', group=group_strat)
+
+// ==========================================
+// ПОЛУЧЕНИЕ ДАННЫХ (Data Collection)
+// ==========================================
+
+fed = fed_active ? request.security('ECONOMICS:USCBBS', 'D', close, currency = currency.USD) : 0
+rrp = rrp_active ? request.security('FRED:RRPONTSYD', 'D', close, currency = currency.USD) : 0
+tga = tga_active ? request.security('FRED:WTREGEN', 'D', close, currency = currency.USD) : 0
+ecb = ecb_active ? request.security('ECONOMICS:EUCBBS * FX_IDC:EURUSD', 'D', close, currency = currency.USD) : 0
+pbc = pbc_active ? request.security('ECONOMICS:CNCBBS * FX_IDC:CNYUSD', 'D', close, currency = currency.USD) : 0
+boj = boj_active ? request.security('ECONOMICS:JPCBBS * FX_IDC:JPYUSD', 'D', close, currency = currency.USD) : 0
+
+boe  = other_active ? request.security('ECONOMICS:GBCBBS * FX_IDC:GBPUSD', 'D', close, currency = currency.USD) : 0
+boc  = other_active ? request.security('ECONOMICS:CACBBS * FX_IDC:CADUSD', 'D', close, currency = currency.USD) : 0
+rba  = other_active ? request.security('ECONOMICS:AUCBBS * FX_IDC:AUDUSD', 'D', close, currency = currency.USD) : 0
+rbi  = other_active ? request.security('ECONOMICS:INCBBS * FX_IDC:INRUSD', 'D', close, currency = currency.USD) : 0
+snb  = other_active ? request.security('ECONOMICS:CHCBBS * FX_IDC:CHFUSD', 'D', close, currency = currency.USD) : 0
+cbr  = other_active ? request.security('ECONOMICS:RUCBBS * FX_IDC:RUBUSD', 'D', close, currency = currency.USD) : 0
+bcb  = other_active ? request.security('ECONOMICS:BRCBBS * FX_IDC:BRLUSD', 'D', close, currency = currency.USD) : 0
+bok  = other_active ? request.security('ECONOMICS:KRCBBS * FX_IDC:KRWUSD', 'D', close, currency = currency.USD) : 0
+rbzn = other_active ? request.security('ECONOMICS:NZCBBS * FX_IDC:NZDUSD', 'D', close, currency = currency.USD) : 0
+sr   = other_active ? request.security('ECONOMICS:SECBBS * FX_IDC:SEKUSD', 'D', close, currency = currency.USD) : 0
+bnm  = other_active ? request.security('ECONOMICS:MYCBBS * FX_IDC:MYRUSD', 'D', close, currency = currency.USD) : 0
+
+usa   = usa_active ? request.security('ECONOMICS:USM2', 'D', close, currency = currency.USD) : 0
+eu    = europe_active ? request.security('ECONOMICS:EUM2 * FX_IDC:EURUSD', 'D', close, currency = currency.USD) : 0
+china = china_active ? request.security('ECONOMICS:CNM2 * FX_IDC:CNYUSD', 'D', close, currency = currency.USD) : 0
+japan = japan_active ? request.security('ECONOMICS:JPM2 * FX_IDC:JPYUSD', 'D', close, currency = currency.USD) : 0
+
+uk          = other_m2_active ? request.security('ECONOMICS:GBM2 * FX_IDC:GBPUSD', 'D', close, currency = currency.USD) : 0
+canada      = other_m2_active ? request.security('ECONOMICS:CAM2 * FX_IDC:CADUSD', 'D', close, currency = currency.USD) : 0
+australia   = other_m2_active ? request.security('ECONOMICS:AUM3 * FX_IDC:AUDUSD', 'D', close, currency = currency.USD) : 0
+india       = other_m2_active ? request.security('ECONOMICS:INM2 * FX_IDC:INRUSD', 'D', close, currency = currency.USD) : 0
+switzerland = other_m2_active ? request.security('ECONOMICS:CHM2 * FX_IDC:CHFUSD', 'D', close, currency = currency.USD) : 0
+russia      = other_m2_active ? request.security('ECONOMICS:RUM2 * FX_IDC:RUBUSD', 'D', close, currency = currency.USD) : 0
+brazil      = other_m2_active ? request.security('ECONOMICS:BRM2 * FX_IDC:BRLUSD', 'D', close, currency = currency.USD) : 0
+korea       = other_m2_active ? request.security('ECONOMICS:KRM2 * FX_IDC:KRWUSD', 'D', close, currency = currency.USD) : 0
+mexico      = other_m2_active ? request.security('ECONOMICS:MXM2 * FX_IDC:MXNUSD', 'D', close, currency = currency.USD) : 0
+indonesia   = other_m2_active ? request.security('ECONOMICS:IDM2 * FX_IDC:IDRUSD', 'D', close, currency = currency.USD) : 0
+africa      = other_m2_active ? request.security('ECONOMICS:ZAM2 * FX_IDC:ZARUSD', 'D', close, currency = currency.USD) : 0
+malaysia    = other_m2_active ? request.security('ECONOMICS:MYM2 * FX_IDC:MYRUSD', 'D', close, currency = currency.USD) : 0
+sweden      = other_m2_active ? request.security('ECONOMICS:SEM2 * FX_IDC:SEKUSD', 'D', close, currency = currency.USD) : 0
+
+// ==========================================
+// МАТЕМАТИЧЕСКИЕ РАСЧЕТЫ (Calculations)
+// ==========================================
+
+total = (fed - rrp - tga + boj + pbc + boe + ecb + rbi + boc + rba + snb + cbr + bcb + bok + rbzn + sr + bnm + usa + eu + china + japan + uk + canada + australia + india + switzerland + russia + brazil + korea + mexico + indonesia + africa + malaysia + sweden) / 1000000000000
+
+sma_input = sma_input_raw == 0 ? 1 : sma_input_raw
+total_sma = ta.sma(total, sma_input)
+roc_sma   = roc_input == 0 ? total_sma : ta.sma(ta.roc(total, roc_input), sma_input)
+
+fast = switch strategy_type
+    'SMA' => ta.sma(total_sma, fast_input)
+    'WMA' => ta.wma(total_sma, fast_input)
+    'RMA' => ta.rma(total_sma, fast_input)
+    => ta.ema(total_sma, fast_input)
+
+slow = switch strategy_type
+    'SMA' => ta.sma(total_sma, slow_input)
+    'WMA' => ta.wma(total_sma, slow_input)
+    'RMA' => ta.rma(total_sma, slow_input)
+    => ta.ema(total_sma, slow_input)
+
+bull    = fast > slow
+bear    = fast < slow
+is_bull = bear[1] and bull
+is_bear = bull[1] and bear
+
+trading_days = syminfo.type == 'crypto' ? 30 : 21
+corr_length = switch corr_length_input
+    '6M'  => trading_days * 6
+    '9M'  => trading_days * 9
+    '1Y'  => trading_days * 12
+    '3Y'  => trading_days * 36
+    '5Y'  => trading_days * 60
+    '10Y' => trading_days * 120
+    => trading_days * 3
+
+gli_corr      = offset_input > 0 ? roc_sma[math.abs(offset_input)] : roc_sma
+price_sma     = ta.sma(close, sma_input)
+roc_price_sma = roc_input == 0 ? price_sma : ta.sma(ta.roc(close, roc_input), sma_input)
+price_corr    = offset_input < 0 ? roc_price_sma[math.abs(offset_input)] : roc_price_sma
+corr          = ta.correlation(gli_corr, price_corr, corr_length)
+
+// ==========================================
+// ВИЗУАЛИЗАЦИЯ (Plotting)
+// ==========================================
+
+// Основная линия GLI и Базовая EMA 80
+plot_gli   = plot(roc_sma,   'GLI Line', color.yellow, 2, offset = offset_input)
+gli_ema_80 = ta.ema(roc_sma, ema_80_length)
+plot_ema80 = plot(gli_ema_80, "EMA 80 (Baseline)", color.new(color.gray, 0), 2, offset = offset_input)
+
+// Зоны перегрева (Heatmap)
+fill(plot_gli, plot_ema80, roc_sma > gli_ema_80 ? color.new(color.red, 80) : color.new(color.green, 80), "Heatmap Fill")
+
+// Сигналы экстремумов (Peak/Bottom)
+highest_gli = ta.highest(roc_sma, ema_80_length)
+lowest_gli  = ta.lowest(roc_sma,  ema_80_length)
+is_peak     = roc_sma == highest_gli
+is_bottom   = roc_sma == lowest_gli
+
+plotshape(is_peak,   title="Dump Signal", style=shape.triangledown, location=location.abovebar, color=color.red,   size=size.small, offset=offset_input, text="DUMP")
+plotshape(is_bottom, title="Pump Signal", style=shape.triangleup,   location=location.belowbar, color=color.green, size=size.small, offset=offset_input, text="PUMP")
+
+// Информационная таблица
+var table t = table.new(position.bottom_right, 1, 3, border_width = 2)
+if barstate.islast
+    table.cell(t, 0, 0, bull ? 'BULL' : 'BEAR', text_color = color.white, bgcolor = bull ? color.green : color.red)
+    table.cell(t, 0, 1, str.tostring(corr, '#.#'), text_color = color.white, bgcolor = corr > 0.7 ? color.green : corr < -0.7 ? color.red : color.gray)
+
+// Алерты
+alertcondition(is_bull, 'GLI Trend Bullish', 'Global Liquidity Bullish Trend!')
+alertcondition(is_bear, 'GLI Trend Bearish', 'Global Liquidity Bearish Trend!')
+
+// ==========================================
+// БЛОК: ГРАФИК ОТКЛОНЕНИЯ (OSCILLATOR)
+// ==========================================
+
+// 1. Расчет разницы (Distance)
+gli_diff = roc_sma - gli_ema_80 
+
+// 2. Визуализация в виде отдельного осциллятора
+plot(gli_diff, "GLI Deviation Oscillator", 
+     color = gli_diff > 0 ? color.new(color.red, 30) : color.new(color.green, 30), 
+     style = plot.style_columns, 
+     offset = offset_input)
+
+hline(0, "Zero Line", color = color.gray, linestyle = hline.style_dashed)
+
+// 3. Динамическая окраска фона при экстремальных значениях
+highest_diff = ta.highest(gli_diff, ema_80_length)
+lowest_diff  = ta.lowest(gli_diff, ema_80_length)
+
+bgcolor(gli_diff == highest_diff ? color.new(color.red, 90) : na, offset = offset_input)
+bgcolor(gli_diff == lowest_diff  ? color.new(color.green, 90) : na, offset = offset_input)

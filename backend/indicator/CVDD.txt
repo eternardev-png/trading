@@ -1,0 +1,38 @@
+// This source code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// © Da_Prof
+
+//@version=5
+indicator("CVDD - Coin Value Days Destroyed for Bitcoin (BTC) [Da_Prof]", shorttitle = "CVDD [Da_Prof]", overlay = true)
+
+// Inputs
+CVDD_extention_slope_factor = input(100, "Coin Value Days Destroyed Top Extension Slope Factor (%)")
+CVDD_extention_intercept_factor = input(100, "Coin Value Days Destroyed Top Extension Intercept Factor (%)")
+CVDD_shift = input (120, "Coin Value Days Destroyed Bottom Shift (%)")
+
+// Query
+btc_high = request.security("BTCUSD", "D", high)
+btc_low =  request.security("BTCUSD", "D", low)
+TV_expr = ta.sma(close, 500)
+MCR = request.security("COINMETRICS:BTC_MARKETCAPREAL", "D", close)
+TV = request.security("GLASSNODE:BTC_TOTALVOLUME", "D", TV_expr) //Total Volume of transfer
+
+//Calculate CVDD
+CVDD = (MCR-TV) / 22000000
+CVDD_bottom = CVDD * CVDD_shift/100
+
+top_factor_CVDD = -8.1775E-13 * CVDD_extention_slope_factor/100 * time + 1.965805965 * CVDD_extention_intercept_factor/100
+top_factor_CVDD := math.pow(10, top_factor_CVDD)
+
+// Plot
+plot(not na(CVDD) and time > timestamp(2011, 08, 06) ? CVDD_bottom : na, color = color.black, title = "Shifted CVDD Background", linewidth = 4)
+plot(not na(CVDD) and time > timestamp(2011, 08, 06) ? CVDD_bottom : na, color = color.rgb(73, 32, 255), title = "Shifted CVDD", linewidth = 2)
+plot(not na(CVDD) and time > timestamp(2011, 08, 06) ? CVDD * top_factor_CVDD : na, color = color.black, title = "CVDD Extension Background", linewidth = 4)
+plot(not na(CVDD) and time > timestamp(2011, 08, 06) ? CVDD * top_factor_CVDD : na, color = color.rgb(199, 39, 227), title = "CVDD Extension", linewidth = 2)
+plot(not na(CVDD) and time > timestamp(2011, 08, 06) ? CVDD : na, color = color.black, title = "CVDD Background", linewidth = 4)
+plot(not na(CVDD) and time > timestamp(2011, 08, 06) ? CVDD : na, color = color.rgb(39, 227, 192), title = "CVDD", linewidth = 2)
+
+bkg_color_above = color.maroon 
+bgcolor(btc_high >= CVDD * top_factor_CVDD and time > timestamp(2011, 08, 06) ? bkg_color_above : na, offset = 0, title = "CVDD High Highlight")
+
+bkg_color_below = color.rgb(45, 255, 52, 80)
+bgcolor(btc_low <= CVDD_bottom and time > timestamp(2011, 08, 06) ? bkg_color_below : na, offset = 0, title = "CVDD Low Highlight")

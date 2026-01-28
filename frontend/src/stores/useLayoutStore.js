@@ -30,7 +30,7 @@ export const useLayoutStore = create((set, get) => ({
                     data: [],
 
                     // Default 'Late' Config Series Style
-                    upColor: 'transparent',
+                    upColor: 'rgba(0, 0, 0, 0)',
                     downColor: '#FFFFFF',
                     borderVisible: true,
                     borderUpColor: '#FFFFFF',
@@ -109,7 +109,9 @@ export const useLayoutStore = create((set, get) => ({
         bgPrimary: '#000000', // User Spec 0 0 0
         bgSecondary: '#181818', // User Spec 24 24 24
         textPrimary: '#d1d4dc',
-        accentColor: '#2962ff'
+        textSecondary: '#9aa0a6', // Added
+        accentColor: '#2962ff',
+        accentGlow: 'rgba(41, 98, 255, 0.5)' // Added
     },
     setInterfaceAppearance: (updates) => set((state) => ({
         interfaceAppearance: { ...state.interfaceAppearance, ...updates }
@@ -337,9 +339,12 @@ export const useLayoutStore = create((set, get) => ({
             chartType: 'line',
             title: code,
             indicatorType: indicator.type,
+            params: indicator.defaultParams || {}, // Fixed: Populate default params
             isComputed: true, // Flag for Client-Side Calc
             color: '#' + Math.floor(Math.random() * 16777215).toString(16),
-            visible: true
+            visible: true,
+            // Protocol 2.0 lines/plots
+            plots: indicator.lines ? indicator.lines.reduce((acc, line) => ({ ...acc, [line.key]: line }), {}) : undefined
         }
         // logic to decide target pane?
         const target = indicator.type === 'overlay' ? 'main-pane' : null

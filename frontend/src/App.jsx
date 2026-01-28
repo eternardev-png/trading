@@ -24,7 +24,9 @@ function App() {
         root.style.setProperty('--bg-secondary', interfaceAppearance.bgSecondary)
         root.style.setProperty('--bg-secondary-rgb', hexToRgb(interfaceAppearance.bgSecondary))
         root.style.setProperty('--text-primary', interfaceAppearance.textPrimary)
+        root.style.setProperty('--text-secondary', interfaceAppearance.textSecondary) // Added
         root.style.setProperty('--accent-blue', interfaceAppearance.accentColor)
+        root.style.setProperty('--accent-blue-glow', interfaceAppearance.accentGlow) // Added
     }, [interfaceAppearance])
 
     const mainSeriesId = panes.find(p => p.id === 'main-pane')?.series.find(s => s.isMain)?.id || panes[0]?.series[0]?.id

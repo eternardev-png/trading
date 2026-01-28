@@ -1,0 +1,745 @@
+
+--- Error calculating SMA ---
+Traceback (most recent call last):
+  File "C:\Users\User\Desktop\Project's Antigravity\Work\AlgoResearch Lab\backend\server.py", line 193, in calculate_indicator
+    df_clean = df_clean.replace([float('inf'), float('-inf'), np.nan], None)
+                                                              ^^
+NameError: name 'np' is not defined
+Params: {}
+
+--- Error calculating SMA ---
+Traceback (most recent call last):
+  File "C:\Users\User\Desktop\Project's Antigravity\Work\AlgoResearch Lab\backend\server.py", line 193, in calculate_indicator
+    df_clean = df_clean.replace([float('inf'), float('-inf'), np.nan], None)
+                                                              ^^
+NameError: name 'np' is not defined
+Params: {}
+
+--- Error calculating EMA ---
+Traceback (most recent call last):
+  File "C:\Users\User\Desktop\Project's Antigravity\Work\AlgoResearch Lab\backend\server.py", line 204, in calculate_indicator
+    df_clean = df_clean.replace([float('inf'), float('-inf'), np.nan], None)
+                                                              ^^
+NameError: name 'np' is not defined
+Params: {}
+
+--- Error calculating EMA ---
+Traceback (most recent call last):
+  File "C:\Users\User\Desktop\Project's Antigravity\Work\AlgoResearch Lab\backend\server.py", line 204, in calculate_indicator
+    df_clean = df_clean.replace([float('inf'), float('-inf'), np.nan], None)
+                                                              ^^
+NameError: name 'np' is not defined
+Params: {}
+
+--- Error calculating EMA ---
+Traceback (most recent call last):
+  File "C:\Users\User\Desktop\Project's Antigravity\Work\AlgoResearch Lab\backend\server.py", line 204, in calculate_indicator
+    df_clean = df_clean.replace([float('inf'), float('-inf'), np.nan], None)
+                                                              ^^
+NameError: name 'np' is not defined
+Params: {}
+
+--- Error calculating EMA ---
+Traceback (most recent call last):
+  File "C:\Users\User\Desktop\Project's Antigravity\Work\AlgoResearch Lab\backend\server.py", line 204, in calculate_indicator
+    df_clean = df_clean.replace([float('inf'), float('-inf'), np.nan], None)
+                                                              ^^
+NameError: name 'np' is not defined
+Params: {}
+
+--- Error calculating EMA ---
+Traceback (most recent call last):
+  File "C:\Users\User\Desktop\Project's Antigravity\Work\AlgoResearch Lab\backend\server.py", line 204, in calculate_indicator
+    df_clean = df_clean.replace([float('inf'), float('-inf'), np.nan], None)
+                                                              ^^
+NameError: name 'np' is not defined
+Params: {}
+
+--- Error calculating EMA ---
+Traceback (most recent call last):
+  File "C:\Users\User\Desktop\Project's Antigravity\Work\AlgoResearch Lab\backend\server.py", line 204, in calculate_indicator
+    df_clean = df_clean.replace([float('inf'), float('-inf'), np.nan], None)
+                                                              ^^
+NameError: name 'np' is not defined
+Params: {}
+
+--- Error calculating Bollinger ---
+Traceback (most recent call last):
+  File "C:\Users\User\Desktop\Project's Antigravity\Work\AlgoResearch Lab\backend\server.py", line 204, in calculate_indicator
+    df_clean = df_clean.replace([float('inf'), float('-inf'), np.nan], None)
+                                                              ^^
+NameError: name 'np' is not defined
+Params: {}
+
+--- Error calculating EMA ---
+Traceback (most recent call last):
+  File "C:\Users\User\Desktop\Project's Antigravity\Work\AlgoResearch Lab\backend\server.py", line 204, in calculate_indicator
+    df_clean = df_clean.replace([float('inf'), float('-inf'), np.nan], None)
+                                                              ^^
+NameError: name 'np' is not defined
+Params: {}
+
+--- Error calculating MACD ---
+Traceback (most recent call last):
+  File "C:\Users\User\Desktop\Project's Antigravity\Work\AlgoResearch Lab\backend\server.py", line 204, in calculate_indicator
+    df_clean = df_clean.replace([float('inf'), float('-inf'), np.nan], None)
+                                                              ^^
+NameError: name 'np' is not defined
+Params: {}
+
+--- Error calculating Bollinger ---
+Traceback (most recent call last):
+  File "C:\Users\User\Desktop\Project's Antigravity\Work\AlgoResearch Lab\backend\server.py", line 204, in calculate_indicator
+    df_clean = df_clean.replace([float('inf'), float('-inf'), np.nan], None)
+                                                              ^^
+NameError: name 'np' is not defined
+Params: {}
+
+--- Error calculating MACD ---
+Traceback (most recent call last):
+  File "C:\Users\User\Desktop\Project's Antigravity\Work\AlgoResearch Lab\backend\server.py", line 204, in calculate_indicator
+    df_clean = df_clean.replace([float('inf'), float('-inf'), np.nan], None)
+                                                              ^^
+NameError: name 'np' is not defined
+Params: {}
+
+--- Error calculating EMA ---
+Traceback (most recent call last):
+  File "C:\Users\User\Desktop\Project's Antigravity\Work\AlgoResearch Lab\backend\server.py", line 204, in calculate_indicator
+    df_clean = df_clean.replace([float('inf'), float('-inf'), np.nan], None)
+                                                              ^^
+NameError: name 'np' is not defined
+Params: {}
+
+--- Error calculating Bollinger ---
+Traceback (most recent call last):
+  File "C:\Users\User\Desktop\Project's Antigravity\Work\AlgoResearch Lab\backend\server.py", line 204, in calculate_indicator
+    df_clean = df_clean.replace([float('inf'), float('-inf'), np.nan], None)
+                                                              ^^
+NameError: name 'np' is not defined
+Params: {}
+
+--- Error calculating MACD ---
+Traceback (most recent call last):
+  File "C:\Users\User\Desktop\Project's Antigravity\Work\AlgoResearch Lab\backend\server.py", line 204, in calculate_indicator
+    df_clean = df_clean.replace([float('inf'), float('-inf'), np.nan], None)
+                                                              ^^
+NameError: name 'np' is not defined
+Params: {}
+
+--- Error calculating EMA ---
+Traceback (most recent call last):
+  File "C:\Users\User\Desktop\Project's Antigravity\Work\AlgoResearch Lab\backend\server.py", line 204, in calculate_indicator
+    df_clean = df_clean.replace([float('inf'), float('-inf'), np.nan], None)
+                                                              ^^
+NameError: name 'np' is not defined
+Params: {}
+
+--- Error calculating Bollinger ---
+Traceback (most recent call last):
+  File "C:\Users\User\Desktop\Project's Antigravity\Work\AlgoResearch Lab\backend\server.py", line 204, in calculate_indicator
+    df_clean = df_clean.replace([float('inf'), float('-inf'), np.nan], None)
+                                                              ^^
+NameError: name 'np' is not defined
+Params: {}
+
+--- Error calculating MACD ---
+Traceback (most recent call last):
+  File "C:\Users\User\Desktop\Project's Antigravity\Work\AlgoResearch Lab\backend\server.py", line 204, in calculate_indicator
+    df_clean = df_clean.replace([float('inf'), float('-inf'), np.nan], None)
+                                                              ^^
+NameError: name 'np' is not defined
+Params: {}
+
+--- Error calculating Bollinger ---
+Traceback (most recent call last):
+  File "C:\Users\User\Desktop\Project's Antigravity\Work\AlgoResearch Lab\backend\server.py", line 204, in calculate_indicator
+    df_clean = df_clean.replace([float('inf'), float('-inf'), np.nan], None)
+                                                              ^^
+NameError: name 'np' is not defined
+Params: {}
+
+--- Error calculating MACD ---
+Traceback (most recent call last):
+  File "C:\Users\User\Desktop\Project's Antigravity\Work\AlgoResearch Lab\backend\server.py", line 204, in calculate_indicator
+    df_clean = df_clean.replace([float('inf'), float('-inf'), np.nan], None)
+                                                              ^^
+NameError: name 'np' is not defined
+Params: {}
+
+--- Error calculating MACD ---
+Traceback (most recent call last):
+  File "C:\Users\User\Desktop\Project's Antigravity\Work\AlgoResearch Lab\backend\server.py", line 204, in calculate_indicator
+    df_clean = df_clean.replace([float('inf'), float('-inf'), np.nan], None)
+                                                              ^^
+NameError: name 'np' is not defined
+Params: {}
+
+--- Error calculating EMA ---
+Traceback (most recent call last):
+  File "C:\Users\User\Desktop\Project's Antigravity\Work\AlgoResearch Lab\backend\server.py", line 204, in calculate_indicator
+    df_clean = df_clean.replace([float('inf'), float('-inf'), np.nan], None)
+                                                              ^^
+NameError: name 'np' is not defined
+Params: {}
+
+--- Error calculating EMA ---
+Traceback (most recent call last):
+  File "C:\Users\User\Desktop\Project's Antigravity\Work\AlgoResearch Lab\backend\server.py", line 204, in calculate_indicator
+    df_clean = df_clean.replace([float('inf'), float('-inf'), np.nan], None)
+                                                              ^^
+NameError: name 'np' is not defined
+Params: {}
+
+--- Error calculating EMA ---
+Traceback (most recent call last):
+  File "C:\Users\User\Desktop\Project's Antigravity\Work\AlgoResearch Lab\backend\server.py", line 204, in calculate_indicator
+    df_clean = df_clean.replace([float('inf'), float('-inf'), np.nan], None)
+                                                              ^^
+NameError: name 'np' is not defined
+Params: {}
+
+--- Error calculating RSI ---
+Traceback (most recent call last):
+  File "C:\Users\User\Desktop\Project's Antigravity\Work\AlgoResearch Lab\backend\server.py", line 204, in calculate_indicator
+    df_clean = df_clean.replace([float('inf'), float('-inf'), np.nan], None)
+                                                              ^^
+NameError: name 'np' is not defined
+Params: {}
+
+--- Error calculating EMA ---
+Traceback (most recent call last):
+  File "C:\Users\User\Desktop\Project's Antigravity\Work\AlgoResearch Lab\backend\server.py", line 204, in calculate_indicator
+    df_clean = df_clean.replace([float('inf'), float('-inf'), np.nan], None)
+                                                              ^^
+NameError: name 'np' is not defined
+Params: {}
+
+--- Error calculating RSI ---
+Traceback (most recent call last):
+  File "C:\Users\User\Desktop\Project's Antigravity\Work\AlgoResearch Lab\backend\server.py", line 204, in calculate_indicator
+    df_clean = df_clean.replace([float('inf'), float('-inf'), np.nan], None)
+                                                              ^^
+NameError: name 'np' is not defined
+Params: {}
+
+--- Error calculating MACD ---
+Traceback (most recent call last):
+  File "C:\Users\User\Desktop\Project's Antigravity\Work\AlgoResearch Lab\backend\server.py", line 204, in calculate_indicator
+    df_clean = df_clean.replace([float('inf'), float('-inf'), np.nan], None)
+                                                              ^^
+NameError: name 'np' is not defined
+Params: {}
+
+--- Error calculating EMA ---
+Traceback (most recent call last):
+  File "C:\Users\User\Desktop\Project's Antigravity\Work\AlgoResearch Lab\backend\server.py", line 204, in calculate_indicator
+    df_clean = df_clean.replace([float('inf'), float('-inf'), np.nan], None)
+                                                              ^^
+NameError: name 'np' is not defined
+Params: {}
+
+--- Error calculating Bollinger ---
+Traceback (most recent call last):
+  File "C:\Users\User\Desktop\Project's Antigravity\Work\AlgoResearch Lab\backend\server.py", line 204, in calculate_indicator
+    df_clean = df_clean.replace([float('inf'), float('-inf'), np.nan], None)
+                                                              ^^
+NameError: name 'np' is not defined
+Params: {}
+
+--- Error calculating MACD ---
+Traceback (most recent call last):
+  File "C:\Users\User\Desktop\Project's Antigravity\Work\AlgoResearch Lab\backend\server.py", line 204, in calculate_indicator
+    df_clean = df_clean.replace([float('inf'), float('-inf'), np.nan], None)
+                                                              ^^
+NameError: name 'np' is not defined
+Params: {}
+
+--- Error calculating RSI ---
+Traceback (most recent call last):
+  File "C:\Users\User\Desktop\Project's Antigravity\Work\AlgoResearch Lab\backend\server.py", line 204, in calculate_indicator
+    df_clean = df_clean.replace([float('inf'), float('-inf'), np.nan], None)
+                                                              ^^
+NameError: name 'np' is not defined
+Params: {}
+
+--- Error calculating EMA ---
+Traceback (most recent call last):
+  File "C:\Users\User\Desktop\Project's Antigravity\Work\AlgoResearch Lab\backend\server.py", line 204, in calculate_indicator
+    df_clean = df_clean.replace([float('inf'), float('-inf'), np.nan], None)
+                                                              ^^
+NameError: name 'np' is not defined
+Params: {}
+
+--- Error calculating RSI ---
+Traceback (most recent call last):
+  File "C:\Users\User\Desktop\Project's Antigravity\Work\AlgoResearch Lab\backend\server.py", line 204, in calculate_indicator
+    df_clean = df_clean.replace([float('inf'), float('-inf'), np.nan], None)
+                                                              ^^
+NameError: name 'np' is not defined
+Params: {}
+
+--- Error calculating Bollinger ---
+Traceback (most recent call last):
+  File "C:\Users\User\Desktop\Project's Antigravity\Work\AlgoResearch Lab\backend\server.py", line 204, in calculate_indicator
+    df_clean = df_clean.replace([float('inf'), float('-inf'), np.nan], None)
+                                                              ^^
+NameError: name 'np' is not defined
+Params: {}
+
+--- Error calculating MACD ---
+Traceback (most recent call last):
+  File "C:\Users\User\Desktop\Project's Antigravity\Work\AlgoResearch Lab\backend\server.py", line 204, in calculate_indicator
+    df_clean = df_clean.replace([float('inf'), float('-inf'), np.nan], None)
+                                                              ^^
+NameError: name 'np' is not defined
+Params: {}
+
+--- Error calculating Antigravity_Tier1 ---
+Traceback (most recent call last):
+  File "C:\Users\User\Desktop\Project's Antigravity\Work\AlgoResearch Lab\backend\server.py", line 204, in calculate_indicator
+    df_clean = df_clean.replace([float('inf'), float('-inf'), np.nan], None)
+                                                              ^^
+NameError: name 'np' is not defined
+Params: {}
+
+--- Error calculating EMA ---
+Traceback (most recent call last):
+  File "C:\Users\User\Desktop\Project's Antigravity\Work\AlgoResearch Lab\backend\server.py", line 204, in calculate_indicator
+    df_clean = df_clean.replace([float('inf'), float('-inf'), np.nan], None)
+                                                              ^^
+NameError: name 'np' is not defined
+Params: {}
+
+--- Error calculating RSI ---
+Traceback (most recent call last):
+  File "C:\Users\User\Desktop\Project's Antigravity\Work\AlgoResearch Lab\backend\server.py", line 204, in calculate_indicator
+    df_clean = df_clean.replace([float('inf'), float('-inf'), np.nan], None)
+                                                              ^^
+NameError: name 'np' is not defined
+Params: {}
+
+--- Error calculating Bollinger ---
+Traceback (most recent call last):
+  File "C:\Users\User\Desktop\Project's Antigravity\Work\AlgoResearch Lab\backend\server.py", line 204, in calculate_indicator
+    df_clean = df_clean.replace([float('inf'), float('-inf'), np.nan], None)
+                                                              ^^
+NameError: name 'np' is not defined
+Params: {}
+
+--- Error calculating MACD ---
+Traceback (most recent call last):
+  File "C:\Users\User\Desktop\Project's Antigravity\Work\AlgoResearch Lab\backend\server.py", line 204, in calculate_indicator
+    df_clean = df_clean.replace([float('inf'), float('-inf'), np.nan], None)
+                                                              ^^
+NameError: name 'np' is not defined
+Params: {}
+
+--- Error calculating Antigravity_Tier1 ---
+Traceback (most recent call last):
+  File "C:\Users\User\Desktop\Project's Antigravity\Work\AlgoResearch Lab\backend\server.py", line 204, in calculate_indicator
+    df_clean = df_clean.replace([float('inf'), float('-inf'), np.nan], None)
+                                                              ^^
+NameError: name 'np' is not defined
+Params: {}
+
+--- Error calculating Antigravity_Tier2 ---
+Traceback (most recent call last):
+  File "C:\Users\User\Desktop\Project's Antigravity\Work\AlgoResearch Lab\backend\server.py", line 204, in calculate_indicator
+    df_clean = df_clean.replace([float('inf'), float('-inf'), np.nan], None)
+                                                              ^^
+NameError: name 'np' is not defined
+Params: {}
+
+--- Error calculating MACD ---
+Traceback (most recent call last):
+  File "C:\Users\User\Desktop\Project's Antigravity\Work\AlgoResearch Lab\backend\server.py", line 204, in calculate_indicator
+    df_clean = df_clean.replace([float('inf'), float('-inf'), np.nan], None)
+                                                              ^^
+NameError: name 'np' is not defined
+Params: {}
+
+--- Error calculating MACD ---
+Traceback (most recent call last):
+  File "C:\Users\User\Desktop\Project's Antigravity\Work\AlgoResearch Lab\backend\server.py", line 204, in calculate_indicator
+    df_clean = df_clean.replace([float('inf'), float('-inf'), np.nan], None)
+                                                              ^^
+NameError: name 'np' is not defined
+Params: {}
+
+--- Error calculating GLF ---
+Traceback (most recent call last):
+  File "C:\Users\User\Desktop\Project's Antigravity\Work\AlgoResearch Lab\backend\server.py", line 180, in calculate_indicator
+    raise Exception(df_result["error"])
+Exception: GLF Calculation Error: Cannot compare dtypes datetime64[ns] and int64
+Params: {}
+
+--- Error calculating MACD ---
+Traceback (most recent call last):
+  File "C:\Users\User\Desktop\Project's Antigravity\Work\AlgoResearch Lab\backend\server.py", line 204, in calculate_indicator
+    df_clean = df_clean.replace([float('inf'), float('-inf'), np.nan], None)
+                                                              ^^
+NameError: name 'np' is not defined
+Params: {}
+
+--- Error calculating GLF ---
+Traceback (most recent call last):
+  File "C:\Users\User\Desktop\Project's Antigravity\Work\AlgoResearch Lab\backend\server.py", line 180, in calculate_indicator
+    raise Exception(df_result["error"])
+Exception: GLF Calculation Error: Cannot compare dtypes datetime64[ns] and int64
+Params: {}
+
+--- Error calculating MACD ---
+Traceback (most recent call last):
+  File "C:\Users\User\Desktop\Project's Antigravity\Work\AlgoResearch Lab\backend\server.py", line 204, in calculate_indicator
+    df_clean = df_clean.replace([float('inf'), float('-inf'), np.nan], None)
+                                                              ^^
+NameError: name 'np' is not defined
+Params: {}
+
+--- Error calculating MACD ---
+Traceback (most recent call last):
+  File "C:\Users\User\Desktop\Project's Antigravity\Work\AlgoResearch Lab\backend\server.py", line 204, in calculate_indicator
+    df_clean = df_clean.replace([float('inf'), float('-inf'), np.nan], None)
+                                                              ^^
+NameError: name 'np' is not defined
+Params: {}
+
+--- Error calculating GLF ---
+Traceback (most recent call last):
+  File "C:\Users\User\Desktop\Project's Antigravity\Work\AlgoResearch Lab\backend\server.py", line 180, in calculate_indicator
+    raise Exception(df_result["error"])
+Exception: GLF Calculation Error: Cannot compare dtypes datetime64[ns] and int64
+Params: {}
+
+--- Error calculating MACD ---
+Traceback (most recent call last):
+  File "C:\Users\User\Desktop\Project's Antigravity\Work\AlgoResearch Lab\backend\server.py", line 204, in calculate_indicator
+    df_clean = df_clean.replace([float('inf'), float('-inf'), np.nan], None)
+                                                              ^^
+NameError: name 'np' is not defined
+Params: {}
+
+--- Error calculating MACD ---
+Traceback (most recent call last):
+  File "C:\Users\User\Desktop\Project's Antigravity\Work\AlgoResearch Lab\backend\server.py", line 204, in calculate_indicator
+    df_clean = df_clean.replace([float('inf'), float('-inf'), np.nan], None)
+                                                              ^^
+NameError: name 'np' is not defined
+Params: {}
+
+--- Error calculating GLF ---
+Traceback (most recent call last):
+  File "C:\Users\User\Desktop\Project's Antigravity\Work\AlgoResearch Lab\backend\server.py", line 180, in calculate_indicator
+    raise Exception(df_result["error"])
+Exception: GLF Calculation Error: Cannot compare dtypes datetime64[ns] and int64
+Params: {}
+
+--- Error calculating BTC_GM2 ---
+Traceback (most recent call last):
+  File "C:\Users\User\Desktop\Project's Antigravity\Work\AlgoResearch Lab\backend\server.py", line 204, in calculate_indicator
+    df_clean = df_clean.replace([float('inf'), float('-inf'), np.nan], None)
+                                                              ^^
+NameError: name 'np' is not defined
+Params: {}
+
+--- Error calculating MACD ---
+Traceback (most recent call last):
+  File "C:\Users\User\Desktop\Project's Antigravity\Work\AlgoResearch Lab\backend\server.py", line 204, in calculate_indicator
+    df_clean = df_clean.replace([float('inf'), float('-inf'), np.nan], None)
+                                                              ^^
+NameError: name 'np' is not defined
+Params: {}
+
+--- Error calculating MACD ---
+Traceback (most recent call last):
+  File "C:\Users\User\Desktop\Project's Antigravity\Work\AlgoResearch Lab\backend\server.py", line 204, in calculate_indicator
+    df_clean = df_clean.replace([float('inf'), float('-inf'), np.nan], None)
+                                                              ^^
+NameError: name 'np' is not defined
+Params: {}
+
+--- Error calculating MACD ---
+Traceback (most recent call last):
+  File "C:\Users\User\Desktop\Project's Antigravity\Work\AlgoResearch Lab\backend\server.py", line 204, in calculate_indicator
+    df_clean = df_clean.replace([float('inf'), float('-inf'), np.nan], None)
+                                                              ^^
+NameError: name 'np' is not defined
+Params: {}
+
+--- Error calculating MACD ---
+Traceback (most recent call last):
+  File "C:\Users\User\Desktop\Project's Antigravity\Work\AlgoResearch Lab\backend\server.py", line 204, in calculate_indicator
+    df_clean = df_clean.replace([float('inf'), float('-inf'), np.nan], None)
+                                                              ^^
+NameError: name 'np' is not defined
+Params: {}
+
+--- Error calculating MACD ---
+Traceback (most recent call last):
+  File "C:\Users\User\Desktop\Project's Antigravity\Work\AlgoResearch Lab\backend\server.py", line 204, in calculate_indicator
+    df_clean = df_clean.replace([float('inf'), float('-inf'), np.nan], None)
+                                                              ^^
+NameError: name 'np' is not defined
+Params: {}
+
+--- Error calculating MACD ---
+Traceback (most recent call last):
+  File "C:\Users\User\Desktop\Project's Antigravity\Work\AlgoResearch Lab\backend\server.py", line 204, in calculate_indicator
+    df_clean = df_clean.replace([float('inf'), float('-inf'), np.nan], None)
+                                                              ^^
+NameError: name 'np' is not defined
+Params: {}
+
+--- Error calculating MACD ---
+Traceback (most recent call last):
+  File "C:\Users\User\Desktop\Project's Antigravity\Work\AlgoResearch Lab\backend\server.py", line 204, in calculate_indicator
+    df_clean = df_clean.replace([float('inf'), float('-inf'), np.nan], None)
+                                                              ^^
+NameError: name 'np' is not defined
+Params: {}
+
+--- Error calculating MACD ---
+Traceback (most recent call last):
+  File "C:\Users\User\Desktop\Project's Antigravity\Work\AlgoResearch Lab\backend\server.py", line 204, in calculate_indicator
+    df_clean = df_clean.replace([float('inf'), float('-inf'), np.nan], None)
+                                                              ^^
+NameError: name 'np' is not defined
+Params: {}
+
+--- Error calculating MACD ---
+Traceback (most recent call last):
+  File "C:\Users\User\Desktop\Project's Antigravity\Work\AlgoResearch Lab\backend\server.py", line 204, in calculate_indicator
+    df_clean = df_clean.replace([float('inf'), float('-inf'), np.nan], None)
+                                                              ^^
+NameError: name 'np' is not defined
+Params: {}
+
+--- Error calculating MACD ---
+Traceback (most recent call last):
+  File "C:\Users\User\Desktop\Project's Antigravity\Work\AlgoResearch Lab\backend\server.py", line 204, in calculate_indicator
+    df_clean = df_clean.replace([float('inf'), float('-inf'), np.nan], None)
+                                                              ^^
+NameError: name 'np' is not defined
+Params: {}
+
+--- Error calculating MACD ---
+Traceback (most recent call last):
+  File "C:\Users\User\Desktop\Project's Antigravity\Work\AlgoResearch Lab\backend\server.py", line 204, in calculate_indicator
+    df_clean = df_clean.replace([float('inf'), float('-inf'), np.nan], None)
+                                                              ^^
+NameError: name 'np' is not defined
+Params: {}
+
+--- Error calculating MACD ---
+Traceback (most recent call last):
+  File "C:\Users\User\Desktop\Project's Antigravity\Work\AlgoResearch Lab\backend\server.py", line 204, in calculate_indicator
+    df_clean = df_clean.replace([float('inf'), float('-inf'), np.nan], None)
+                                                              ^^
+NameError: name 'np' is not defined
+Params: {}
+
+--- Error calculating BTC_GM2 ---
+Traceback (most recent call last):
+  File "C:\Users\User\Desktop\Project's Antigravity\Work\AlgoResearch Lab\backend\server.py", line 204, in calculate_indicator
+    df_clean = df_clean.replace([float('inf'), float('-inf'), np.nan], None)
+                                                              ^^
+NameError: name 'np' is not defined
+Params: {}
+
+--- Error calculating MACD ---
+Traceback (most recent call last):
+  File "C:\Users\User\Desktop\Project's Antigravity\Work\AlgoResearch Lab\backend\server.py", line 204, in calculate_indicator
+    df_clean = df_clean.replace([float('inf'), float('-inf'), np.nan], None)
+                                                              ^^
+NameError: name 'np' is not defined
+Params: {}
+
+--- Error calculating MACD ---
+Traceback (most recent call last):
+  File "C:\Users\User\Desktop\Project's Antigravity\Work\AlgoResearch Lab\backend\server.py", line 204, in calculate_indicator
+    df_clean = df_clean.replace([float('inf'), float('-inf'), np.nan], None)
+                                                              ^^
+NameError: name 'np' is not defined
+Params: {}
+
+--- Error calculating MACD ---
+Traceback (most recent call last):
+  File "C:\Users\User\Desktop\Project's Antigravity\Work\AlgoResearch Lab\backend\server.py", line 204, in calculate_indicator
+    df_clean = df_clean.replace([float('inf'), float('-inf'), np.nan], None)
+                                                              ^^
+NameError: name 'np' is not defined
+Params: {}
+
+--- Error calculating MACD ---
+Traceback (most recent call last):
+  File "C:\Users\User\Desktop\Project's Antigravity\Work\AlgoResearch Lab\backend\server.py", line 204, in calculate_indicator
+    df_clean = df_clean.replace([float('inf'), float('-inf'), np.nan], None)
+                                                              ^^
+NameError: name 'np' is not defined
+Params: {}
+
+--- Error calculating MACD ---
+Traceback (most recent call last):
+  File "C:\Users\User\Desktop\Project's Antigravity\Work\AlgoResearch Lab\backend\server.py", line 204, in calculate_indicator
+    df_clean = df_clean.replace([float('inf'), float('-inf'), np.nan], None)
+                                                              ^^
+NameError: name 'np' is not defined
+Params: {}
+
+--- Error calculating MACD ---
+Traceback (most recent call last):
+  File "C:\Users\User\Desktop\Project's Antigravity\Work\AlgoResearch Lab\backend\server.py", line 204, in calculate_indicator
+    df_clean = df_clean.replace([float('inf'), float('-inf'), np.nan], None)
+                                                              ^^
+NameError: name 'np' is not defined
+Params: {}
+
+--- Error calculating MACD ---
+Traceback (most recent call last):
+  File "C:\Users\User\Desktop\Project's Antigravity\Work\AlgoResearch Lab\backend\server.py", line 204, in calculate_indicator
+    df_clean = df_clean.replace([float('inf'), float('-inf'), np.nan], None)
+                                                              ^^
+NameError: name 'np' is not defined
+Params: {}
+
+--- Error calculating MACD ---
+Traceback (most recent call last):
+  File "C:\Users\User\Desktop\Project's Antigravity\Work\AlgoResearch Lab\backend\server.py", line 204, in calculate_indicator
+    df_clean = df_result.astype(object)
+                                        
+NameError: name 'np' is not defined
+Params: {}
+
+--- Error calculating GLF ---
+Traceback (most recent call last):
+  File "C:\Users\User\Desktop\Project's Antigravity\Work\AlgoResearch Lab\backend\server.py", line 181, in calculate_indicator
+    raise Exception(df_result["error"])
+Exception: GLF Calculation Error: Cannot compare dtypes datetime64[ns] and int64
+Params: {}
+
+--- Error calculating GLF ---
+Traceback (most recent call last):
+  File "C:\Users\User\Desktop\Project's Antigravity\Work\AlgoResearch Lab\backend\server.py", line 181, in calculate_indicator
+    raise Exception(df_result["error"])
+Exception: GLF Calculation Error: Cannot compare dtypes datetime64[ns] and int64
+Params: {}
+
+--- Error calculating GLF ---
+Traceback (most recent call last):
+  File "C:\Users\User\Desktop\Project's Antigravity\Work\AlgoResearch Lab\backend\server.py", line 181, in calculate_indicator
+    raise Exception(df_result["error"])
+Exception: GLF Calculation Error: Cannot compare dtypes datetime64[ns] and int64
+Params: {}
+
+--- Error calculating GLF ---
+Traceback (most recent call last):
+  File "C:\Users\User\Desktop\Project's Antigravity\Work\AlgoResearch Lab\backend\server.py", line 181, in calculate_indicator
+    raise Exception(df_result["error"])
+Exception: GLF Calculation Error: Cannot compare dtypes datetime64[ns] and int64
+Params: {}
+
+--- Error calculating RSI ---
+Traceback (most recent call last):
+  File "C:\Users\User\Desktop\Project's Antigravity\Work\AlgoResearch Lab\backend\server.py", line 181, in calculate_indicator
+    raise Exception(df_result["error"])
+Exception: RSI Error: division by zero
+Params: {'length': 0}
+
+--- Error calculating RSI ---
+Traceback (most recent call last):
+  File "C:\Users\User\Desktop\Project's Antigravity\Work\AlgoResearch Lab\backend\server.py", line 181, in calculate_indicator
+    raise Exception(df_result["error"])
+Exception: RSI Error: division by zero
+Params: {'length': 0}
+
+--- Error calculating RSI ---
+Traceback (most recent call last):
+  File "C:\Users\User\Desktop\Project's Antigravity\Work\AlgoResearch Lab\backend\server.py", line 181, in calculate_indicator
+    raise Exception(df_result["error"])
+Exception: RSI Error: division by zero
+Params: {'length': 0}
+
+--- Error calculating RSI ---
+Traceback (most recent call last):
+  File "C:\Users\User\Desktop\Project's Antigravity\Work\AlgoResearch Lab\backend\server.py", line 181, in calculate_indicator
+    raise Exception(df_result["error"])
+Exception: RSI Error: division by zero
+Params: {'length': 0}
+
+--- Error calculating RSI ---
+Traceback (most recent call last):
+  File "C:\Users\User\Desktop\Project's Antigravity\Work\AlgoResearch Lab\backend\server.py", line 181, in calculate_indicator
+    raise Exception(df_result["error"])
+Exception: RSI Error: division by zero
+Params: {'length': 0}
+
+--- Error calculating RSI ---
+Traceback (most recent call last):
+  File "C:\Users\User\Desktop\Project's Antigravity\Work\AlgoResearch Lab\backend\server.py", line 181, in calculate_indicator
+    raise Exception(df_result["error"])
+Exception: RSI Error: division by zero
+Params: {'length': 0}
+
+--- Error calculating RSI ---
+Traceback (most recent call last):
+  File "C:\Users\User\Desktop\Project's Antigravity\Work\AlgoResearch Lab\backend\server.py", line 181, in calculate_indicator
+    raise Exception(df_result["error"])
+Exception: RSI Error: division by zero
+Params: {'length': 0}
+
+--- Error calculating RSI ---
+Traceback (most recent call last):
+  File "C:\Users\User\Desktop\Project's Antigravity\Work\AlgoResearch Lab\backend\server.py", line 181, in calculate_indicator
+    raise Exception(df_result["error"])
+Exception: RSI Error: division by zero
+Params: {'length': 0}
+
+--- Error calculating RSI ---
+Traceback (most recent call last):
+  File "C:\Users\User\Desktop\Project's Antigravity\Work\AlgoResearch Lab\backend\server.py", line 181, in calculate_indicator
+    raise Exception(df_result["error"])
+Exception: RSI Error: division by zero
+Params: {'length': 0}
+
+--- Error calculating RSI ---
+Traceback (most recent call last):
+  File "C:\Users\User\Desktop\Project's Antigravity\Work\AlgoResearch Lab\backend\server.py", line 181, in calculate_indicator
+    raise Exception(df_result["error"])
+Exception: RSI Error: division by zero
+Params: {'length': 0}
+
+--- Error calculating RSI ---
+Traceback (most recent call last):
+  File "C:\Users\User\Desktop\Project's Antigravity\Work\AlgoResearch Lab\backend\server.py", line 181, in calculate_indicator
+    raise Exception(df_result["error"])
+Exception: RSI Error: division by zero
+Params: {'length': 0}
+
+--- Error calculating RSI ---
+Traceback (most recent call last):
+  File "C:\Users\User\Desktop\Project's Antigravity\Work\AlgoResearch Lab\backend\server.py", line 181, in calculate_indicator
+    raise Exception(df_result["error"])
+Exception: RSI Error: division by zero
+Params: {'length': 0}
+
+--- Error calculating EMA ---
+Traceback (most recent call last):
+  File "C:\Users\User\Desktop\Project's Antigravity\Work\AlgoResearch Lab\backend\server.py", line 181, in calculate_indicator
+    raise Exception(df_result["error"])
+Exception: EMA Error: span must satisfy: span >= 1
+Params: {'length': 0}
+
+--- Error calculating GLF ---
+Traceback (most recent call last):
+  File "C:\Users\User\Desktop\Project's Antigravity\Work\AlgoResearch Lab\backend\server.py", line 181, in calculate_indicator
+    raise Exception(df_result["error"])
+Exception: GLF Calculation Error: Cannot compare dtypes datetime64[ns] and int64
+Params: {}
+
+--- Error calculating BTC_GM2 ---
+Traceback (most recent call last):
+  File "C:\Users\User\Desktop\Project's Antigravity\Work\AlgoResearch Lab\backend\server.py", line 181, in calculate_indicator
+    raise Exception(df_result["error"])
+Exception: GM2 Error: Cannot compare dtypes datetime64[ns] and int64
+Params: {'sma_weeks': 52}

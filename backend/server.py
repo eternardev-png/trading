@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import uvicorn
 import pandas as pd
+import numpy as np
 import json
 from typing import List, Optional, Dict, Any
 
@@ -22,7 +23,7 @@ app.add_middleware(
 
 # Initialize engines
 loader = DataLoader()
-indicator_engine = Indicators()
+indicator_engine = Indicators(loader)
 
 class DataRequest(BaseModel):
     ticker: str
@@ -73,6 +74,50 @@ def get_data(ticker: str, timeframe: str, source: str = 'auto', limit: int = 500
         print(f"Error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.get("/api/v1/macro")
+def get_macro_data(ticker: str, limit: int = 5000):
+    """
+    Fetch macro-economic data (e.g. Fed Balance Sheet, M2).
+    Supported Tickers: ECONOMICS:USWALCL, FRED:M2SL, ECONOMICS:USINTR, etc.
+    """
+    if not loader.tv_loader:
+        raise HTTPException(status_code=503, detail="TradingView Loader not available")
+        
+    try:
+        print(f"Fetching macro data for {ticker}...")
+        df = loader.tv_loader.fetch_macro_series(ticker, n_bars=limit)
+        
+        if df is None or df.empty:
+             raise HTTPException(status_code=404, detail=f"No data found for {ticker}")
+             
+        # Format for frontend (LineSeries)
+        # DF has OHLCV, we use 'close' as the value
+        data = []
+        # Ensure 'close' exists
+        if 'close' not in df.columns:
+             # Fallback if single column
+             col = df.columns[0]
+             df['close'] = df[col]
+
+        for date, row in df.iterrows():
+            val = row['close']
+            if pd.notna(val):
+                data.append({
+                    "time": int(date.timestamp()),
+                    "value": float(val)
+                })
+                
+        return {
+            "ticker": ticker,
+            "count": len(data),
+            "data": data
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Macro fetch error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.post("/api/v1/indicators")
 def calculate_indicator(req: IndicatorRequest):
     """
@@ -81,6 +126,13 @@ def calculate_indicator(req: IndicatorRequest):
     try:
         # Reconstruct DataFrame
         df = pd.DataFrame(req.data)
+        
+        # Explicitly enforce numeric types to prevent calc errors
+        numeric_cols = ['open', 'high', 'low', 'close', 'volume']
+        for col in numeric_cols:
+            if col in df.columns:
+                df[col] = pd.to_numeric(df[col], errors='coerce')
+        
         if 'time' in df.columns:
              # Use time as index if needed, or just keep it
              # Indicators engine expects numeric or datetime index? 
@@ -89,6 +141,9 @@ def calculate_indicator(req: IndicatorRequest):
 
         if df.empty:
              raise HTTPException(status_code=400, detail="Empty data provided")
+             
+        # Debug: Check types
+        print(f"DF Types: {df.dtypes}")
 
         # Apply indicator
         # Note: The Indicators class modifies the DF in place or returns it.
@@ -100,48 +155,15 @@ def calculate_indicator(req: IndicatorRequest):
         # Parse params
         params = req.params
 
-        # --- SPECIAL HANDLING: Hydrate Macro Data for GM2 ---
         if req.indicator == 'BTC_GM2' and 'global_m2' not in df.columns:
-            try:
-                print("Hydrating dataframe with Global M2 data...")
-                # 1. Prepare Crypto DF (Indices must be Datetime)
-                df_temp = df.copy()
-                if 'time' in df_temp.columns:
-                    df_temp['date'] = pd.to_datetime(df_temp['time'], unit='s')
-                    df_temp.set_index('date', inplace=True)
-                
-                # 2. Fetch Macro
-                # 'Global M2' will trigger the logic in DataLoader
-                m2_df = loader.fetch_macro_data('Global M2')
-                
-                if not m2_df.empty:
-                    # 3. Merge
-                    # merge_with_macro expects both to have DatetimeIndex
-                    merged_df = loader.merge_with_macro(df_temp, m2_df)
-                    
-                    # 4. Restore original structure (columns 'global_m2' should now exist)
-                    # We dropped 'time' if we set it as index? No, set_index keeps it unless drop=True (default True).
-                    # Let's restore 'time' from index or just keep 'global_m2' column back to original df?
-                    # Easiest is to use the merged_df, reset index to get 'date', then convert back to 'time' or just ensure 'time' exists.
-                    
-                    # merged_df has DatetimeIndex.
-                    # It has 'global_m2'.
-                    # It might have missing rows if merge failed? No, left join.
-                    
-                    # Reset index to get date column back
-                    merged_df.reset_index(inplace=True)
-                    
-                    # Ensure 'time' column is present and correct
-                    if 'time' not in merged_df.columns:
-                        merged_df['time'] = merged_df['date'].astype('int64') // 10**9
-                        
-                    # Update our main df
-                    df = merged_df
-                    print("Hydration successful. Columns:", df.columns.tolist())
-                else:
-                    print("Warning: Global M2 fetch returned empty.")
-            except Exception as ex:
-                print(f"Error hydrating M2: {ex}")
+            # Hydration disabled to prevent corruption
+            pass
+        # ----------------------------------------------------
+        # HYDRATION DISABLED:
+        # Prevent automatic merging of M2 data for standard indicators.
+        # Indicators like GLF/BTC_GM2 fetch their own data internally.
+        # This avoids potential merge/timezone issues destroying the main price DF.
+        # ----------------------------------------------------
         # ----------------------------------------------------
 
         
@@ -151,23 +173,56 @@ def calculate_indicator(req: IndicatorRequest):
         
         df_result = indicator_engine.apply_indicator(df, req.indicator, **params)
         
-        # Handle Dictionary result (e.g. BTC_GM2 new implementation)
+
+        
+        # PROTOCOL 2.0 CHECK
         if isinstance(df_result, dict):
-            if 'error' in df_result:
-                 raise Exception(df_result['error'])
+            if "error" in df_result:
+                 raise Exception(df_result["error"])
+            
+            # Protocol 2.0 Structure
+            if "meta" in df_result and "plots" in df_result:
+                print(f"Protocol 2.0 Response for {req.indicator}. Plots: {list(df_result['plots'].keys())}", flush=True)
+                return {
+                     "indicator": req.indicator,
+                     "protocol": "2.0",
+                     "meta": df_result["meta"],
+                     "plots": df_result["plots"],
+                     "data": df_result["data"]
+                }
+            
+            # Legacy Dict Fallback
             return {
                 "indicator": req.indicator,
                 "data": df_result.get("data", [])
             }
         
-        # Handle DataFrame result (Legacy/Other indicators)
-        result_json = df_result.to_dict(orient='records')
+        # Legacy DataFrame Fallback (for non-migrated indicators)
+        print(f"Legacy DataFrame Response for {req.indicator}", flush=True)
+        
+        # SANITIZE
+        df_clean = df_result.astype(object)
+        df_clean = df_clean.replace([float('inf'), float('-inf'), np.nan], None)
+        
+        # Restore time if needed
+        if 'time' not in df_clean.columns:
+            if isinstance(df_clean.index, pd.DatetimeIndex):
+                df_clean['time'] = df_clean.index.astype(np.int64) // 10**9
+                 
+        result_json = df_clean.to_dict(orient='records')
         return {"indicator": req.indicator, "data": result_json}
+
 
     except Exception as e:
         import traceback
-        traceback.print_exc()
+        error_msg = traceback.format_exc()
         print(f"Error calculating {req.indicator}: {e}")
+        # Log to file for debugging
+        with open("backend_error.log", "a") as f:
+            f.write(f"\n--- Error calculating {req.indicator} ---\n")
+            f.write(error_msg)
+            f.write("Params: " + str(req.params) + "\n")
+        
         raise HTTPException(status_code=500, detail=str(e))
 
 from backtester import Backtester

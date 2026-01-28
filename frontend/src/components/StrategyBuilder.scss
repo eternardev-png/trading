@@ -245,7 +245,7 @@
 }
 
 .btn-add {
-    background: rgba(41, 98, 255, 0.1);
+    background: var(--glass-bg);
     border: 1px solid var(--accent-blue);
     color: var(--accent-blue);
     padding: 6px 12px;
@@ -257,6 +257,7 @@
     &:hover {
         background: var(--accent-blue);
         color: white;
+        box-shadow: 0 0 10px var(--accent-blue-glow);
     }
 }
 

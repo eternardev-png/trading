@@ -15,6 +15,13 @@ const formatVolume = (vol) => {
     return vol.toFixed(0)
 }
 
+const sanitizeColor = (c) => {
+    if (!c || typeof c !== 'string') return undefined
+    if (c === 'transparent') return 'rgba(0, 0, 0, 0)'
+    return c
+}
+
+
 const ChartPane = forwardRef(({
     id,
     height,
@@ -37,7 +44,8 @@ const ChartPane = forwardRef(({
     canMoveDown,
     timeScaleVisible = true, // Default to true
     onLoadMore, // Infinite Scroll Callback
-    isLoading = false // Infinite Scroll Loading State
+    isLoading = false, // Infinite Scroll Loading State
+    onOpenSettings // Callback for Settings Modal
 }, ref) => {
     const containerRef = useRef(null)
     const paneRef = useRef(null)
@@ -426,7 +434,80 @@ const ChartPane = forwardRef(({
             let series = seriesMap.current[config.id]
             const seriesData = config.data || data
 
-            // Create series if needed
+            // PROTOCOL 2.0 RENDERER
+            if (config.protocol === '2.0' && config.plots) {
+                Object.entries(config.plots).forEach(([plotKey, plotDef]) => {
+                    const subId = `${config.id}#${plotKey}`
+                    let subSeries = seriesMap.current[subId]
+
+                    // Create
+                    if (!subSeries) {
+                        const opts = {
+                            color: plotDef.color || config.color || '#2962ff',
+                            priceScaleId: config.priceScaleId || (config.meta?.type === 'overlay' ? 'right' : 'right'), // Use 'right' as default for overlay/subplot
+                            // Check if overlay or separate pane? 
+                            // ChartPane handles separate panes by being instantiated separately. 
+                            // So 'right' is always the pane's main scale.
+                            title: plotDef.title
+                        }
+
+                        if (plotDef.type === 'histogram') {
+                            subSeries = chartRef.current.addHistogramSeries({
+                                ...opts,
+                                lineWidth: plotDef.lineWidth || 1
+                            })
+                        } else {
+                            // Default Line
+                            subSeries = chartRef.current.addLineSeries({
+                                ...opts,
+                                lineWidth: plotDef.lineWidth || 2,
+                                lineStyle: plotDef.style === 'dashed' ? 2 : 0
+                            })
+                        }
+                        seriesMap.current[subId] = subSeries
+                    }
+
+                    // Update Options (Visibility / Color)
+                    // We assume store updates 'plots' config if user changes settings? 
+                    // Or styles are stored separately? 
+                    // useLayoutStore has 'styles' map? 
+                    // Current store implementation puts settings into 'seriesConfig'. 
+                    // So we read from `plotDef` (which should come from store state).
+
+                    // Allow overriding visibility via `plotDef.visible`
+                    // BUT respect parent config.visible (Master Switch) - AND Local Override (seriesVisible)
+                    const localParentVisible = seriesVisible[config.id] !== undefined ? seriesVisible[config.id] : (config.visible !== false)
+                    const isParentVisible = localParentVisible
+                    const isChildVisible = plotDef.visible !== false
+                    const isPlotVisible = isParentVisible && isChildVisible
+
+                    subSeries.applyOptions({
+                        visible: isPlotVisible,
+                        color: plotDef.color
+                    })
+
+                    // Set Data
+                    if (seriesData && seriesData.length > 0) {
+                        const mappedData = seriesData.map(d => ({
+                            time: d.time,
+                            value: (d[plotKey] !== undefined && d[plotKey] !== null) ? Number(d[plotKey]) : NaN,
+                            color: plotDef.type === 'histogram' ? (d[plotKey] >= 0 ? '#26a69a' : '#ef5350') : undefined
+                        })).filter(d => !Number.isNaN(d.value))
+
+                        // DEBUG: Check if we have data
+                        if (mappedData.length > 0) {
+                            console.log(`[ChartPane] Setting ${mappedData.length} pts for ${subId}. Type: ${plotDef.type} Color: ${plotDef.color}. Last:`, mappedData[mappedData.length - 1])
+                        } else {
+                            console.warn(`[ChartPane] Series ${subId} mappedData is EMPTY! Keys in data:`, Object.keys(seriesData[0]), `Looking for: ${plotKey}`)
+                        }
+
+                        subSeries.setData(mappedData)
+                    }
+                })
+                return // Skip legacy logic
+            }
+
+            // Create series if needed (LEGACY)
             if (!series) {
                 if (config.chartType === 'candle') {
                     series = chartRef.current.addCandlestickSeries({
@@ -477,14 +558,25 @@ const ChartPane = forwardRef(({
                     // 1. Cast & Clean (Strip garbage properties, ensure Numbers)
                     const cleanData = seriesData.map(d => ({
                         time: d.time,
-                        open: Number(d.open),
-                        high: Number(d.high),
-                        low: Number(d.low),
-                        close: Number(d.close)
+                        open: d.open != null ? Number(d.open) : NaN,
+                        high: d.high != null ? Number(d.high) : NaN,
+                        low: d.low != null ? Number(d.low) : NaN,
+                        close: d.close != null ? Number(d.close) : NaN
                     }))
 
                     // 2. Dedupe/Sort & Validate
-                    const validData = mergeAndSortData([], cleanData).filter(d => d.open !== undefined)
+                    // STRICT VALIDATION: Exclude any candle with NaN/-Inf/Inf values OR NULL TIME
+                    const validData = mergeAndSortData([], cleanData).filter(d =>
+                        d.time !== null && d.time !== undefined &&
+                        Number.isFinite(d.open) &&
+                        Number.isFinite(d.high) &&
+                        Number.isFinite(d.low) &&
+                        Number.isFinite(d.close)
+                    )
+
+                    if (cleanData.length !== validData.length) {
+                        console.warn(`[ChartPane] Filtered ${cleanData.length - validData.length} invalid candles for ${config.id}`)
+                    }
 
                     series.setData(validData)
 
@@ -502,38 +594,90 @@ const ChartPane = forwardRef(({
                         }))
                     }
                 } else if (config.chartType === 'line') {
-                    // 1. Cast & Clean (Map close -> value, ensure Numbers)
-                    const cleanData = seriesData.map(d => ({
-                        time: d.time,
-                        value: Number(d.value !== undefined ? d.value : d.close)
-                    }))
 
-                    // 2. Dedupe/Sort & Validate
-                    const validData = mergeAndSortData([], cleanData).filter(d => d.value !== undefined)
+                    // MULTI-LINE SUPPORT (e.g. Antigravity)
+                    if (config.lines && Array.isArray(config.lines)) {
+                        config.lines.forEach(lineConfig => {
+                            const lineId = config.id + '_' + lineConfig.key
+                            let subSeries = seriesMap.current[lineId]
 
-                    series.setData(validData)
+                            // create if not exists
+                            if (!subSeries) {
+                                subSeries = chartRef.current.addLineSeries({
+                                    color: lineConfig.color || config.color || '#2962ff',
+                                    lineWidth: lineConfig.lineWidth || 2,
+                                    lineStyle: lineConfig.lineStyle || 0, // 0=Solid, 2=Dashed
+                                    priceScaleId: lineConfig.priceScaleId || 'right', // 'right' is default pane scale
+                                    visible: lineConfig.visible !== false // default true
+                                })
+                                seriesMap.current[lineId] = subSeries
+                            }
 
-                    const last = validData[validData.length - 1]
-                    if (last) {
-                        setOhlc(prev => ({
-                            ...prev,
-                            [config.id]: { value: last.value }
+                            // Map Data
+                            const subData = seriesData.map(d => ({
+                                time: d.time,
+                                value: (d[lineConfig.key] !== undefined && d[lineConfig.key] !== null) ? Number(d[lineConfig.key]) : NaN,
+                            }))
+
+                            // Filter valid
+                            const validSubData = mergeAndSortData([], subData).filter(d => !Number.isNaN(d.value))
+                            subSeries.setData(validSubData)
+                        })
+
+                        // We don't use the "main" series variable for data if lines are defined, 
+                        // but we might need to update OHLC context?
+                        // Just use the first line's value for OHLC display if needed.
+                        const guideLine = config.lines[0]
+                        const lastPoint = seriesData[seriesData.length - 1]
+                        if (lastPoint && guideLine) {
+                            setOhlc(prev => ({
+                                ...prev,
+                                [config.id]: { value: lastPoint[guideLine.key] }
+                            }))
+                        }
+
+                    } else {
+                        // STANDARD SINGLE LINE
+                        // 1. Cast & Clean (Map close -> value, ensure Numbers)
+                        const cleanData = seriesData.map(d => ({
+                            time: d.time,
+                            // Fix: If value is missing, default to NaN so validator catches it
+                            value: (d.value !== undefined && d.value !== null) ? Number(d.value) : NaN,
+                            color: d.color // Pass color directly if available
                         }))
+
+                        // 2. Dedupe/Sort & Validate
+                        const validData = mergeAndSortData([], cleanData).filter(d => !Number.isNaN(d.value))
+
+
+                        // Debug log for ALL indicators
+
+
+                        series.setData(validData)
+
+                        const last = validData[validData.length - 1]
+                        if (last) {
+                            setOhlc(prev => ({
+                                ...prev,
+                                [config.id]: { value: last.value }
+                            }))
+                        }
                     }
                 } else if (config.chartType === 'volume' || config.type === 'volume') {
                     // 1. Cast & Clean (Map volume -> value, ensure Numbers)
                     const cleanData = seriesData.map(d => {
                         const open = Number(d.open)
                         const close = Number(d.close)
+                        const rawVal = d.value !== undefined ? d.value : d.volume
                         return {
                             time: d.time,
-                            value: Number(d.value !== undefined ? d.value : d.volume),
+                            value: (rawVal !== undefined && rawVal !== null) ? Number(rawVal) : NaN,
                             color: d.color || ((close >= open) ? 'rgba(38, 166, 154, 0.5)' : 'rgba(239, 83, 80, 0.5)')
                         }
                     })
 
                     // 2. Dedupe/Sort & Validate
-                    const validData = mergeAndSortData([], cleanData).filter(d => d.value !== undefined)
+                    const validData = mergeAndSortData([], cleanData).filter(d => !Number.isNaN(d.value))
 
                     series.setData(validData)
 
@@ -547,8 +691,10 @@ const ChartPane = forwardRef(({
                 } else if (config.id === 'BTC_GM2' && seriesData.length > 0) {
 
                     // HANDLING COMPLEX BTC_GM2 INDICATOR
-                    // 1. Main Line (BTC_GM2) - mapped above to 'series' (assuming generic line created it)
-                    const lineData = seriesData.map(d => ({ time: d.time, value: d.BTC_GM2 }))
+                    // 1. Main Line (BTC_GM2)
+                    const lineData = seriesData
+                        .map(d => ({ time: d.time, value: d.BTC_GM2 }))
+                        .filter(d => d.value !== undefined && d.value !== null && !Number.isNaN(Number(d.value)))
                     series.setData(lineData)
 
                     // 2. SMA Line (Orange)
@@ -562,7 +708,9 @@ const ChartPane = forwardRef(({
                         })
                         seriesMap.current[smaId] = smaSeries
                     }
-                    const smaData = seriesData.map(d => ({ time: d.time, value: d.BTC_GM2_SMA })).filter(d => d.value)
+                    const smaData = seriesData
+                        .map(d => ({ time: d.time, value: d.BTC_GM2_SMA }))
+                        .filter(d => d.value !== undefined && d.value !== null && !Number.isNaN(Number(d.value)))
                     smaSeries.setData(smaData)
 
                     // 3. Background Zones (Histogram)
@@ -620,27 +768,27 @@ const ChartPane = forwardRef(({
                     lineWidth: config.lineWidth,
                 }
                 if (config.chartType === 'candle') {
-                    // Safe Defaults
-                    const upColor = config.upColor || '#26a69a'
-                    const downColor = config.downColor || '#ef5350'
-                    const borderUpColor = config.borderUpColor || upColor
-                    const borderDownColor = config.borderDownColor || downColor
-                    const wickUpColor = config.wickUpColor || upColor
-                    const wickDownColor = config.wickDownColor || downColor
+                    // Safe Defaults with aggressive fallback
+                    const safeUp = sanitizeColor(config.upColor) || '#26a69a'
+                    const safeDown = sanitizeColor(config.downColor) || '#ef5350'
 
-                    opts.upColor = upColor
-                    opts.downColor = downColor
-                    opts.borderVisible = config.borderVisible !== undefined ? config.borderVisible : true
-                    opts.borderUpColor = borderUpColor
-                    opts.borderDownColor = borderDownColor
-                    opts.wickVisible = config.wickVisible !== undefined ? config.wickVisible : true
-                    opts.wickUpColor = wickUpColor
-                    opts.wickDownColor = wickDownColor
+                    opts.upColor = safeUp
+                    opts.downColor = safeDown
 
-                    // Emulate bodyVisible
+                    // Borders
+                    opts.borderVisible = config.borderVisible !== false
+                    opts.borderUpColor = sanitizeColor(config.borderUpColor) || safeUp
+                    opts.borderDownColor = sanitizeColor(config.borderDownColor) || safeDown
+
+                    // Wicks
+                    opts.wickVisible = config.wickVisible !== false
+                    opts.wickUpColor = sanitizeColor(config.wickUpColor) || safeUp
+                    opts.wickDownColor = sanitizeColor(config.wickDownColor) || safeDown
+
+                    // Body Override (Transparent)
                     if (config.bodyVisible === false) {
-                        opts.upColor = 'transparent'
-                        opts.downColor = 'transparent'
+                        opts.upColor = 'rgba(0, 0, 0, 0)'
+                        opts.downColor = 'rgba(0, 0, 0, 0)'
                     }
                 }
                 if (config.priceScaleId) opts.priceScaleId = config.priceScaleId
@@ -650,7 +798,13 @@ const ChartPane = forwardRef(({
 
         // Cleanup old series
         Object.keys(seriesMap.current).forEach(id => {
-            if (!seriesConfigs.find(s => s.id === id)) {
+            const isUsed = seriesConfigs.some(s => {
+                if (s.id === id) return true
+                if (id.startsWith(s.id + '#')) return true // Sub-series match
+                return false
+            })
+
+            if (!isUsed) {
                 if (seriesMap.current[id]) {
                     chartRef.current.removeSeries(seriesMap.current[id])
                     delete seriesMap.current[id]
@@ -697,46 +851,62 @@ const ChartPane = forwardRef(({
 
     }, [data, seriesConfigs, seriesVisible])
 
-    // Apply strategy markers when signals change
+    // Apply strategy markers AND Antigravity Tier 2 markers
     useEffect(() => {
         if (!chartRef.current || id !== 'main-pane') return
-        // strategySignals is now a direct dependency, so it's available here
-        if (!strategySignals || strategySignals.length === 0) {
-            // Clear markers if no signals
-            const mainConfig = seriesConfigs.find(c => c.chartType === 'candle' && c.isMain)
-            if (mainConfig) {
-                const mainSeries = seriesMap.current[mainConfig.id]
-                if (mainSeries) {
-                    mainSeries.setMarkers([])
-                }
-            }
-            return
-        }
-
-        // Check if Strategy indicator is visible
-        const strategyConfig = seriesConfigs.find(c => c.id === 'strategy-signals')
-        const isStrategyVisible = seriesVisible['strategy-signals'] !== false
 
         // Find main candlestick series
         const mainConfig = seriesConfigs.find(c => c.chartType === 'candle' && c.isMain)
         if (!mainConfig) return
-
         const mainSeries = seriesMap.current[mainConfig.id]
         if (!mainSeries) return
 
-        // Apply or clear markers based on visibility
-        if (isStrategyVisible && strategyConfig) {
-            const markers = strategySignals.map(signal => ({
+        let allMarkers = []
+
+        // 1. Strategy Signals (from Store)
+        const isStrategyVisible = seriesVisible['strategy-signals'] !== false
+        const strategyConfig = seriesConfigs.find(c => c.id === 'strategy-signals')
+
+        if (isStrategyVisible && strategyConfig && strategySignals && strategySignals.length > 0) {
+            const strategyMarkers = strategySignals.map(signal => ({
                 time: signal.time,
                 position: signal.type === 'buy' ? 'belowBar' : 'aboveBar',
                 color: signal.type === 'buy' ? '#26a69a' : '#ef5350',
                 shape: signal.type === 'buy' ? 'arrowUp' : 'arrowDown',
                 text: signal.type === 'buy' ? 'B' : 'S'
             }))
-            mainSeries.setMarkers(markers)
-        } else {
-            mainSeries.setMarkers([])
+            allMarkers = [...allMarkers, ...strategyMarkers]
         }
+
+        // 2. Antigravity Tier 2 (from Series Configs)
+        const tier2Config = seriesConfigs.find(c => c.id === 'Antigravity_Tier2')
+        const isTier2Visible = seriesVisible['Antigravity_Tier2'] !== false
+
+        if (tier2Config && isTier2Visible && tier2Config.data && tier2Config.data.length > 0) {
+            const tier2Markers = []
+            tier2Config.data.forEach(d => {
+                // MVRV Signals
+                if (d.Signal_MVRV === 'Buy') {
+                    tier2Markers.push({ time: d.time, position: 'belowBar', color: '#00E676', shape: 'arrowUp', text: 'MVRV Buy' })
+                } else if (d.Signal_MVRV === 'Sell') {
+                    tier2Markers.push({ time: d.time, position: 'aboveBar', color: '#FF5252', shape: 'arrowDown', text: 'MVRV Sell' })
+                }
+
+                // BTCM2 Signals
+                if (d.Signal_BTCM2) {
+                    // Check if duplicate time? LWC handles multiple markers on same time OK usually (stacks them?).
+                    // If conflicts, maybe specific text?
+                    tier2Markers.push({ time: d.time, position: 'belowBar', color: '#FFC400', shape: 'arrowUp', text: 'BTCM2' })
+                }
+            })
+            allMarkers = [...allMarkers, ...tier2Markers]
+        }
+
+        // Apply all
+        // Sort by time just in case
+        allMarkers.sort((a, b) => a.time - b.time)
+        mainSeries.setMarkers(allMarkers)
+
     }, [id, seriesConfigs, strategySignals, seriesVisible])
 
     // Update crosshair mode when magnetMode changes
@@ -1091,7 +1261,13 @@ const ChartPane = forwardRef(({
                                         <span className="ind-name">{config.title || config.chartType || config.type}</span>
                                         <span className="ind-value">{sOhlc.value?.toFixed(2)}{sOhlc.volume ? formatVolume(sOhlc.volume) : ''}</span>
                                         <div className="action-buttons">
-                                            <button className="action-btn" title="Настройки">{'\u2699'}</button>
+                                            <button
+                                                className="action-btn"
+                                                title="Настройки"
+                                                onClick={() => onOpenSettings?.(config.id)}
+                                            >
+                                                {'\u2699'}
+                                            </button>
 
                                             {/* UI for Moving Series (Floor System) */}
                                             {/* We rely on SeriesMenu for advanced moves, but can add quick up/down here? */}
@@ -1110,6 +1286,7 @@ const ChartPane = forwardRef(({
                                                 onScaleChange={(mode) => onScaleChange?.(config.id, mode)}
                                                 onHide={() => hideSeries(config.id)}
                                                 onRemove={() => onRemoveSeries?.(config.id)}
+                                                onSettings={() => onOpenSettings?.(config.id)}
                                             />
                                             <button
                                                 className="action-btn action-btn--danger"

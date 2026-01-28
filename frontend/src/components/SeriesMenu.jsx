@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import './SeriesMenu.scss'
 
-function SeriesMenu({ name, color, priceScale, onScaleChange, onMoveToPane, onHide, onRemove, hoverOnly = false, paneIndex = 0, totalPanes = 1, paneSeriesCount = 1 }) {
+function SeriesMenu({ name, color, priceScale, onScaleChange, onMoveToPane, onHide, onRemove, onSettings, hoverOnly = false, paneIndex = 0, totalPanes = 1, paneSeriesCount = 1 }) {
     const [isOpen, setIsOpen] = useState(false)
     const [showScaleSubmenu, setShowScaleSubmenu] = useState(false)
     const [showMoveSubmenu, setShowMoveSubmenu] = useState(false)
@@ -155,8 +155,9 @@ function SeriesMenu({ name, color, priceScale, onScaleChange, onMoveToPane, onHi
 
             {/* Layer order */}
             {onMoveToPane && (
-                <button
+                <div
                     className="series-menu__item"
+                    role="button"
                     onMouseEnter={() => setShowMoveSubmenu(true)}
                     onMouseLeave={() => setShowMoveSubmenu(false)}
                 >
@@ -195,13 +196,14 @@ function SeriesMenu({ name, color, priceScale, onScaleChange, onMoveToPane, onHi
                             )}
                         </div>
                     )}
-                </button>
+                </div>
             )}
 
             {/* Scale binding */}
             {onScaleChange && (
-                <button
+                <div
                     className="series-menu__item"
+                    role="button"
                     onMouseEnter={() => setShowScaleSubmenu(true)}
                     onMouseLeave={() => setShowScaleSubmenu(false)}
                 >
@@ -244,7 +246,7 @@ function SeriesMenu({ name, color, priceScale, onScaleChange, onMoveToPane, onHi
                             </button>
                         </div>
                     )}
-                </button>
+                </div>
             )}
 
             <div className="series-menu__divider" />
@@ -266,7 +268,7 @@ function SeriesMenu({ name, color, priceScale, onScaleChange, onMoveToPane, onHi
             <div className="series-menu__divider" />
 
             {/* Settings */}
-            <button className="series-menu__item">
+            <button className="series-menu__item" onClick={() => { onSettings?.(); closeMenu(); }}>
                 <span className="icon">⚙</span>
                 <span>Настройки...</span>
             </button>

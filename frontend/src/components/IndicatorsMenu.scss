@@ -21,8 +21,9 @@
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    color: #d1d4dc;
+    color: var(--text-primary);
     font-family: -apple-system, BlinkMacSystemFont, "Trebuchet MS", Roboto, Ubuntu, sans-serif;
+    border: 1px solid var(--glass-border);
 }
 
 .indicators-menu__header {
@@ -30,7 +31,7 @@
     align-items: center;
     justify-content: space-between;
     padding: 16px 20px;
-    border-bottom: 1px solid #2a2e39;
+    border-bottom: 1px solid var(--glass-border);
 }
 
 .indicators-menu__title {
@@ -41,19 +42,19 @@
 .indicators-menu__close {
     background: none;
     border: none;
-    color: #787b86;
+    color: var(--text-secondary);
     font-size: 20px;
     cursor: pointer;
     padding: 4px;
 
     &:hover {
-        color: #d1d4dc;
+        color: var(--text-primary);
     }
 }
 
 .indicators-menu__input-wrapper {
     padding: 16px 20px;
-    border-bottom: 1px solid #2a2e39;
+    border-bottom: 1px solid var(--glass-border);
     display: flex;
     align-items: center;
     gap: 10px;
@@ -63,12 +64,12 @@
     background: none;
     border: none;
     outline: none;
-    color: #d1d4dc;
+    color: var(--text-primary);
     font-size: 16px;
     width: 100%;
 
     &::placeholder {
-        color: #50535e;
+        color: var(--text-tertiary);
     }
 }
 
@@ -80,7 +81,7 @@
 
 .indicators-menu__sidebar {
     width: 200px;
-    border-right: 1px solid #2a2e39;
+    border-right: 1px solid var(--glass-border);
     padding: 10px 0;
     display: flex;
     flex-direction: column;
@@ -92,18 +93,18 @@
     border: none;
     text-align: left;
     padding: 10px 20px;
-    color: #787b86;
+    color: var(--text-secondary);
     cursor: pointer;
     font-size: 14px;
     transition: all 0.1s;
 
     &:hover {
-        background: #2a2e39;
-        color: #d1d4dc;
+        background: rgba(255, 255, 255, 0.05);
+        color: var(--text-primary);
     }
 
     &.active {
-        background: #2962ff;
+        background: var(--accent-blue);
         color: white;
     }
 }
@@ -118,7 +119,7 @@
     }
 
     &::-webkit-scrollbar-thumb {
-        background: #2a2e39;
+        background: rgba(255, 255, 255, 0.1);
         border-radius: 3px;
     }
 }
@@ -132,7 +133,7 @@
     transition: background 0.1s;
 
     &:hover {
-        background: #2a2e39;
+        background: rgba(255, 255, 255, 0.05);
     }
 
     &__info {
@@ -142,16 +143,16 @@
 
     .indicator-name {
         font-size: 14px;
-        color: #d1d4dc;
+        color: var(--text-primary);
     }
 
     &__actions {
         .star-icon {
-            color: #787b86;
+            color: var(--text-secondary);
             font-size: 16px;
 
             &:hover {
-                color: #f7ce46;
+                color: #f7ce46; // Gold star remains gold
             }
         }
     }
@@ -160,5 +161,5 @@
 .no-results {
     padding: 20px;
     text-align: center;
-    color: #50535e;
+    color: var(--text-tertiary);
 }

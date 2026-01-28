@@ -124,7 +124,7 @@
 
         &.active {
             color: var(--accent-blue);
-            background: rgba(41, 98, 255, 0.1);
+            background: var(--accent-blue-glow);
         }
     }
 
@@ -226,7 +226,7 @@
 
         &.active {
             color: var(--accent-blue);
-            background: rgba(41, 98, 255, 0.1);
+            background: var(--accent-blue-glow);
         }
     }
 

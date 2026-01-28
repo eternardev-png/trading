@@ -1,0 +1,353 @@
+//@version=5
+strategy("GLF Antigravity Strategy v3.1 (Fix Typos)", overlay=true, precision=2, initial_capital=10000, default_qty_type=strategy.cash, default_qty_value=100, pyramiding=20)
+
+// ── INTRODUCTION ─────────────────────────────────────────────────────────────
+// GLF Antigravity v3.0 (Composite Macro + Dynamic Logic)
+// 1. Tier 1 Macro: Composite (Fed Balance + DXY).
+// 2. Tier 2 Indicators: CVDD, MVRV, BTCM2, GLI.
+// 3. Dynamic Logic: Risk-On / Risk-Off / Neutral regimes affect signal strictness.
+// 4. Optimization: Liquidity Tickers aggregated to save 'request.security' slots.
+
+// ── SETTINGS: DATE RANGE ─────────────────────────────────────────────────────
+group_date = "Date Range"
+useDateFilter = input.bool(true, "Filter Date Range", group=group_date)
+backtestStartDate = input.time(timestamp("1 Jan 2015 00:00"), "Start Date", group=group_date)
+backtestEndDate = input.time(timestamp("1 Jan 2030 00:00"), "End Date", group=group_date)
+inDateRange = not useDateFilter or (time >= backtestStartDate and time <= backtestEndDate)
+
+// ── SETTINGS: BUDGET ─────────────────────────────────────────────────────────
+group_money = "Budget Allocation"
+pct_cvdd = input.float(25.0, "CVDD Allocation (%)", minval=0, maxval=100, group=group_money)
+pct_mvrv = input.float(25.0, "MVRV Allocation (%)", minval=0, maxval=100, group=group_money)
+pct_m2   = input.float(25.0, "M2 Allocation (%)",   minval=0, maxval=100, group=group_money)
+pct_gli  = input.float(25.0, "GLI Allocation (%)",  minval=0, maxval=100, group=group_money)
+
+// ── SETTINGS: GLOBAL SENSITIVITY ─────────────────────────────────────────────
+group_sens = "Global Sensitivity"
+buy_sens   = input.float(1.0, "Buy Sensitivity (0.5 - 1.5)", minval=0.5, maxval=1.5, step=0.1, tooltip="> 1.0 = More Buys (Aggressive)\n< 1.0 = Fewer Buys (Conservative)", group=group_sens)
+
+// ── SETTINGS: DCA & EXITS ────────────────────────────────────────────────────
+group_dca = "DCA & Distribution Strategy"
+dca_step_pct = input.float(3.0, "DCA Buy Step (%)", minval=0.5, group=group_dca, tooltip="Buy next layer only if price drops this % from last buy")
+max_layers   = input.int(5, "Max Layers (Entries)", minval=1, group=group_dca)
+take_partial = input.float(50, "Partial TP % (Local High)", minval=10, maxval=100, group=group_dca)
+
+// ── SETTINGS: MACRO (TIER 1) ─────────────────────────────────────────────────
+group_risk = "Tier 1: Macro Regime"
+qt_multiplier = input.float(0.5, "Risk-Off Size Multiplier (0.0-1.0)", minval=0.0, maxval=1.0, step=0.1, group=group_risk)
+macro_draw_bg = input.bool(true, "Show Macro Zones?", group=group_risk)
+
+// ── SETTINGS: INDICATORS (TIER 2) ────────────────────────────────────────────
+group_cvdd = "CVDD Settings"
+CVDD_extention_slope      = input.float(100.0, "Top Slope (%)", group=group_cvdd)
+CVDD_extention_intercept  = input.float(100.0, "Top Intercept (%)", group=group_cvdd)
+CVDD_shift                = input.float(120.0, "Bottom Shift (%)", group=group_cvdd)
+
+group_mvrv = "MVRV Settings"
+mvrv_buy_risk_on  = input.float(1.2,  "Buy Threshold (Risk-On)", step=0.1, group=group_mvrv)
+mvrv_buy_risk_off = input.float(0.8,  "Buy Threshold (Risk-Off)", step=0.1, group=group_mvrv)
+mvrv_sell_upper   = input.float(3.5,  "Sell Threshold", group=group_mvrv)
+
+group_m2 = "BTC % M2 Settings"
+m2_yoy_threshold = input.float(1.5, "Min YoY Growth (%)", step=0.1, group=group_m2)
+m2_dist_sell     = input.float(0.4, "Sell Distance", step=0.05, group=group_m2)
+m2_sma_len       = input.int(52,    "SMA Length (Weeks)", minval=10, group=group_m2)
+
+group_glf = "GLF Indicator Settings"
+gli_sma_len    = input.int(1,    'GLI SMA', minval=1, group=group_glf) // Fixed to 1 if 0
+gli_roc_len    = input.int(100,  'GLI ROC Length', minval=1, group=group_glf)
+gli_ema80_len  = input.int(180,  'GLI Baseline', group=group_glf)
+
+// ═════════════════════════════════════════════════════════════════════════════
+// ── DATA REQUESTS (OPTIMIZED < 40) ───────────────────────────────────────────
+// ═════════════════════════════════════════════════════════════════════════════
+
+// 1. LIQUIDITY DATA (Individual Calls to avoid Symbol Error)
+// Limit Check: ~32 Liquidity Calls + 5 Other Calls = ~37 Total (Max 40)
+
+// Central Banks
+fed = request.security('ECONOMICS:USCBBS', 'D', close)
+rrp = request.security('FRED:RRPONTSYD',   'D', close)
+tga = request.security('FRED:WTREGEN',     'D', close) 
+ecb = request.security('ECONOMICS:EUCBBS * FX_IDC:EURUSD', 'D', close)
+pbc = request.security('ECONOMICS:CNCBBS * FX_IDC:CNYUSD', 'D', close)
+boj = request.security('ECONOMICS:JPCBBS * FX_IDC:JPYUSD', 'D', close)
+boe = request.security('ECONOMICS:GBCBBS * FX_IDC:GBPUSD', 'D', close)
+boc = request.security('ECONOMICS:CACBBS * FX_IDC:CADUSD', 'D', close)
+rba = request.security('ECONOMICS:AUCBBS * FX_IDC:AUDUSD', 'D', close)
+rbi = request.security('ECONOMICS:INCBBS * FX_IDC:INRUSD', 'D', close)
+snb = request.security('ECONOMICS:CHCBBS * FX_IDC:CHFUSD', 'D', close)
+cbr = request.security('ECONOMICS:RUCBBS * FX_IDC:RUBUSD', 'D', close)
+bcb = request.security('ECONOMICS:BRCBBS * FX_IDC:BRLUSD', 'D', close)
+bok = request.security('ECONOMICS:KRCBBS * FX_IDC:KRWUSD', 'D', close)
+rbzn= request.security('ECONOMICS:NZCBBS * FX_IDC:NZDUSD', 'D', close)
+sr  = request.security('ECONOMICS:SECBBS * FX_IDC:SEKUSD', 'D', close)
+bnm = request.security('ECONOMICS:MYCBBS * FX_IDC:MYRUSD', 'D', close)
+
+// M2 Supply
+usm2 = request.security('ECONOMICS:USM2', 'D', close)
+eum2 = request.security('ECONOMICS:EUM2 * FX_IDC:EURUSD', 'D', close)
+cnm2 = request.security('ECONOMICS:CNM2 * FX_IDC:CNYUSD', 'D', close)
+jpm2 = request.security('ECONOMICS:JPM2 * FX_IDC:JPYUSD', 'D', close)
+gbm2 = request.security('ECONOMICS:GBM2 * FX_IDC:GBPUSD', 'D', close)
+cam2 = request.security('ECONOMICS:CAM2 * FX_IDC:CADUSD', 'D', close)
+aum2 = request.security('ECONOMICS:AUM3 * FX_IDC:AUDUSD', 'D', close) 
+inm2 = request.security('ECONOMICS:INM2 * FX_IDC:INRUSD', 'D', close)
+chm2 = request.security('ECONOMICS:CHM2 * FX_IDC:CHFUSD', 'D', close)
+rum2 = request.security('ECONOMICS:RUM2 * FX_IDC:RUBUSD', 'D', close)
+brm2 = request.security('ECONOMICS:BRM2 * FX_IDC:BRLUSD', 'D', close)
+krm2 = request.security('ECONOMICS:KRM2 * FX_IDC:KRWUSD', 'D', close)
+mxm2 = request.security('ECONOMICS:MXM2 * FX_IDC:MXNUSD', 'D', close)
+idm2 = request.security('ECONOMICS:IDM2 * FX_IDC:IDRUSD', 'D', close)
+zam2 = request.security('ECONOMICS:ZAM2 * FX_IDC:ZARUSD', 'D', close)
+mym2 = request.security('ECONOMICS:MYM2 * FX_IDC:MYRUSD', 'D', close)
+sem2 = request.security('ECONOMICS:SEM2 * FX_IDC:SEKUSD', 'D', close)
+
+// Total Global Liquidity Calculation
+total_cb = nz(fed) + nz(ecb) + nz(pbc) + nz(boj) + nz(boe) + nz(boc) + nz(rba) + nz(rbi) + nz(snb) + nz(cbr) + nz(bcb) + nz(bok) + nz(rbzn) + nz(sr) + nz(bnm) - (nz(rrp) + nz(tga))
+total_m2 = nz(usm2) + nz(eum2) + nz(cnm2) + nz(jpm2) + nz(gbm2) + nz(cam2) + nz(aum2) + nz(inm2) + nz(chm2) + nz(rum2) + nz(brm2) + nz(krm2) + nz(mxm2) + nz(idm2) + nz(zam2) + nz(mym2) + nz(sem2)
+
+total_liq = total_cb + total_m2
+// Adjust scale to Trillions
+total_liq := total_liq / 1000000000000
+
+// 2. MACRO COMPOSITE DATA
+fred_walcl = request.security("FRED:WALCL", "D", close) // Fed Balance
+dxy_close  = request.security("TVC:DXY",    "D", close) // Dollar Index
+
+// 3. CRYPTO DATA
+btc_mc    = request.security("CRYPTOCAP:BTC", "D", close)
+mcr_daily = request.security("COINMETRICS:BTC_MARKETCAPREAL", "D", close)
+btc_tv    = request.security("GLASSNODE:BTC_TOTALVOLUME", "D", close, ignore_invalid_symbol=true)
+btc_tv   := na(btc_tv) ? ta.sma(volume * close, 500) : btc_tv 
+
+// ═════════════════════════════════════════════════════════════════════════════
+// ── TIER 1: MACRO REGIME LOGIC ───────────────────────────────────────────────
+// ═════════════════════════════════════════════════════════════════════════════
+
+// Calculate Rates of Change
+walcl_roc = ta.roc(fred_walcl, 30) // 30-day change in Fed Balance
+dxy_roc   = ta.roc(dxy_close, 30)  // 30-day change in Dollar Strength
+
+// REGIME DEFINITIONS
+// 1. RISK-ON (Strong QE): Fed adding liquidity OR (Fed mixed AND Dollar weakening)
+is_risk_on = walcl_roc > 0 or (math.abs(walcl_roc) < 0.5 and dxy_roc < 0)
+
+// 2. RISK-OFF (Hard QT): Fed draining liquidity AND Dollar strengthening
+is_risk_off = walcl_roc < 0 and dxy_roc > 0
+
+// 3. NEUTRAL: Everything else
+is_neutral = not is_risk_on and not is_risk_off
+
+// Strings & Colors
+// Strings & Colors
+macro_str = is_risk_on ? "RISK-ON" : is_risk_off ? "RISK-OFF" : "NEUTRAL"
+macro_col = is_risk_on ? color.green : is_risk_off ? color.red : color.gray
+// Size Mult NOT used in DCA logic directly, we use strict layers
+
+// ═════════════════════════════════════════════════════════════════════════════
+// ── TIER 2: INDICATORS (DYNAMIC) ─────────────────────────────────────────────
+// ═════════════════════════════════════════════════════════════════════════════
+
+// --- A. GLI INDICATOR ---
+gli_sma  = ta.sma(total_liq, gli_sma_len)
+gli_val  = ta.sma(ta.roc(total_liq, gli_roc_len), gli_sma_len)
+gli_base = ta.ema(gli_val, gli_ema80_len)
+gli_diff = gli_val - gli_base
+is_gli_buy  = gli_diff == ta.lowest(gli_diff, gli_ema80_len)
+is_gli_sell = gli_diff == ta.highest(gli_diff, gli_ema80_len)
+
+// --- B. CVDD ---
+cvdd_raw = (mcr_daily - btc_tv) / 22000000 
+cvdd_bot = cvdd_raw * (CVDD_shift * buy_sens) / 100
+// Approx Top Formula
+cvdd_top_exp = -8.1775e-13 * (CVDD_extention_slope/100) * time + 1.9658 * (CVDD_extention_intercept/100)
+cvdd_top = cvdd_raw * math.pow(10, cvdd_top_exp)
+is_cvdd_buy  = low <= cvdd_bot
+is_cvdd_sell = high >= cvdd_top
+
+// --- C. MVRV Z-SCORE ---
+mvrv_std = ta.stdev(btc_mc, 1400) 
+zscore   = (btc_mc - mcr_daily) / mvrv_std
+// Dynamic Thresholds based on Regime
+dyn_mvrv_buy_thr = (is_risk_on ? mvrv_buy_risk_on : (is_risk_off ? mvrv_buy_risk_off : mvrv_buy_risk_on)) * buy_sens
+is_mvrv_buy  = zscore < dyn_mvrv_buy_thr
+is_mvrv_sell = zscore > mvrv_sell_upper
+
+// --- D. BTCM2 (Reconstructed) ---
+// Note: We use the already requested 'total_m2' sum (Section 1)
+total_m2_daily = total_m2
+// Logic mimics Weekly
+btc_pct = (btc_mc / total_m2_daily) * 100
+m2_sma  = ta.sma(btc_pct, m2_sma_len * 7) // Daily approximation of Weekly SMA
+// YoY
+m2_val_now = total_m2_daily
+m2_val_old = total_m2_daily[365] 
+m2_yoy     = ((m2_val_now - m2_val_old) / m2_val_old) * 100
+
+is_m2_buy  = m2_yoy > (m2_yoy_threshold / buy_sens) and (btc_pct - m2_sma) < 0
+is_m2_sell = (btc_pct - m2_sma) > m2_dist_sell
+
+// ═════════════════════════════════════════════════════════════════════════════
+// ── EXECUTION LOGIС (REGIME BASED) ───────────────────────────────────────────
+// ═════════════════════════════════════════════════════════════════════════════
+
+// Signal Gathering
+sig_gli  = is_gli_buy
+sig_cvdd = is_cvdd_buy
+sig_mvrv = is_mvrv_buy
+sig_m2   = is_m2_buy
+
+// Confluence Count
+sig_count = (sig_gli?1:0) + (sig_cvdd?1:0) + (sig_mvrv?1:0) + (sig_m2?1:0)
+
+// Entry Conditions by Regime
+bool enter_cvdd = false
+bool enter_mvrv = false
+bool enter_m2   = false
+bool enter_gli  = false
+
+if is_risk_on or is_neutral
+    // Standard Mode (1 signal enough)
+    enter_cvdd := sig_cvdd
+    enter_mvrv := sig_mvrv
+    enter_m2   := sig_m2
+    enter_gli  := sig_gli
+else if is_risk_off
+    // Hard Logic (Need Confluence >= 2)
+    min_confluence = 2
+    if sig_count >= min_confluence
+        enter_cvdd := sig_cvdd
+        enter_mvrv := sig_mvrv
+        enter_m2   := sig_m2
+        enter_gli  := sig_gli
+
+// 214: Position Sizing & Execution (REWRITTEN FOR DCA)
+// --------------------------------------------------------
+
+// Helper to calc layer size (Total Budget for component / Max Layers)
+// Applies Risk-Off Multiplier to the BUDGET, not just single entry
+calc_layer_size(budget_pct) => 
+    safe_equity = math.max(0, strategy.equity)
+    // In Risk-Off, reduce global budget
+    risk_mult   = is_risk_off ? qt_multiplier : (is_risk_on ? 1.0 : 0.5)
+    total_alloc = safe_equity * (budget_pct / 100.0) * risk_mult
+    layer_usd   = total_alloc / max_layers
+    qty_final   = layer_usd / close
+    qty_final > 0 ? qty_final : 0
+
+// Track Last Entry Prices to enforce Grid/DCA steps
+var float last_entry_cvdd = 0.0
+var float last_entry_mvrv = 0.0
+var float last_entry_m2   = 0.0
+var float last_entry_gli  = 0.0
+var int   layers_cvdd     = 0
+var int   layers_mvrv     = 0
+var int   layers_m2       = 0
+var int   layers_gli      = 0
+
+// Reset counters if flat (Safety)
+if strategy.position_size == 0
+    layers_cvdd := 0
+    layers_mvrv := 0
+    layers_m2   := 0
+    layers_gli  := 0
+
+// --- EXECUTION FUNCTION ---
+attempt_entry(bool signal, string id, float last_price, int layers, float pct_alloc) =>
+    bool do_buy = false
+    float new_price = last_price
+    int new_layers = layers
+    
+    if signal and inDateRange
+        // Condition 1: First Entry
+        if layers == 0
+            do_buy := true
+        // Condition 2: DCA Step (Price < Last Buy * (1 - step)) AND Not Max Layers
+        else if layers < max_layers and close < last_price * (1 - dca_step_pct/100)
+            do_buy := true
+            
+    if do_buy
+        sz = calc_layer_size(pct_alloc)
+        if sz > 0
+            strategy.entry(id, strategy.long, qty=sz)
+            new_price  := close
+            new_layers := layers + 1
+            
+    [new_price, new_layers]
+
+// --- CALL ENTRIES ---
+[p_cvdd, l_cvdd] = attempt_entry(enter_cvdd, "L_CVDD", last_entry_cvdd, layers_cvdd, pct_cvdd)
+last_entry_cvdd := p_cvdd
+layers_cvdd     := l_cvdd
+
+[p_mvrv, l_mvrv] = attempt_entry(enter_mvrv, "L_MVRV", last_entry_mvrv, layers_mvrv, pct_mvrv)
+last_entry_mvrv := p_mvrv
+layers_mvrv     := l_mvrv
+
+[p_m2, l_m2]     = attempt_entry(enter_m2,   "L_M2",   last_entry_m2,   layers_m2,   pct_m2)
+last_entry_m2   := p_m2
+layers_m2       := l_m2
+
+[p_gli, l_gli]   = attempt_entry(enter_gli,  "L_GLI",  last_entry_gli,  layers_gli,  pct_gli)
+last_entry_gli  := p_gli
+layers_gli      := l_gliё
+
+// --- EXITS (PARTIAL & FULL) ---
+
+// CVDD Exits
+if is_cvdd_sell // Top Touch = Full Exit
+    strategy.close("L_CVDD", comment="Full Exit")
+    layers_cvdd := 0
+
+// MVRV Exits
+// Weak Exit (Local High): > 3.5 (Default)
+if is_mvrv_sell 
+    // If HUGE bubble (> 6.0), close all
+    if zscore > 6.0
+        strategy.close("L_MVRV", comment="MVRV Max Sell")
+        layers_mvrv := 0
+    else
+        // Local High - Partial Sell
+        strategy.close("L_MVRV", qty_percent=take_partial, comment="MVRV Partial")
+        // We don't reset layers to 0 immediately to allow riding, but logic implies risk reduction
+        
+// M2 Exits
+if is_m2_sell
+    strategy.close("L_M2", qty_percent=take_partial, comment="M2 Partial")
+    if (btc_pct - m2_sma) > (m2_dist_sell * 1.5) // Super extended
+        strategy.close("L_M2", comment="M2 Max")
+        layers_m2 := 0
+
+// GLI Exits
+if is_gli_sell
+    strategy.close("L_GLI", qty_percent=take_partial, comment="GLI Partial")
+
+// ═════════════════════════════════════════════════════════════════════════════
+// ── VISUALS ──────────────────────────────────────────────────────────────────
+// ═════════════════════════════════════════════════════════════════════════════
+
+// Background
+bgcolor(macro_draw_bg ? color.new(macro_col, 90) : na)
+
+// Plot Indicators
+plot(cvdd_top, "CVDD Top", color=color.purple)
+plot(cvdd_bot, "CVDD Bot", color=color.green)
+
+// Dashboard
+if barstate.islastconfirmedhistory
+    var tbl = table.new(position.top_right, 2, 8, bgcolor=color.new(color.black, 70))
+    table.cell(tbl, 0, 0, "MACRO REGIME", text_color=color.white)
+    table.cell(tbl, 1, 0, macro_str,      text_color=color.white, bgcolor=macro_col)
+    
+    // Display Risk Mult for reference
+    disp_mult = is_risk_off ? qt_multiplier : (is_risk_on ? 1.0 : 0.5)
+    
+    table.cell(tbl, 0, 1, "RISK MULT",    text_color=color.silver)
+    table.cell(tbl, 1, 1, str.tostring(disp_mult) + "x", text_color=color.white)
+
+    table.cell(tbl, 0, 2, "ACTIVE SIGNALS", text_color=color.silver)
+    table.cell(tbl, 1, 2, str.tostring(sig_count), text_color=color.white)
+
+    table.cell(tbl, 0, 3, "Req. Confluence", text_color=color.silver)
+    table.cell(tbl, 1, 3, is_risk_off ? "2" : "1", text_color=color.orange)
